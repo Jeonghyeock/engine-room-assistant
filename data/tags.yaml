@@ -1,0 +1,153 @@
+# 가상 선박의 감시 태그 — 교육용 가상 값이다. 실제 기관에 쓰면 안 된다.
+# 매뉴얼의 설정값 표(ingest/build_manual.py)와 가상 알람 감시 시스템(ams 서버)이 함께 읽는다.
+#
+# measure: 센서 측정 범위. 값이 이 끝에 붙어 있으면 센서·배선 이상을 의심한다.
+# normal:  정상 운전 범위.
+# limits:  alarm(경보) → slowdown(감속) → shutdown(정지). _low는 이하, _high는 이상에서 동작한다.
+
+systems:
+  ME: 주기관
+  LO: 주기관 윤활유 계통
+  JCW: 주기관 재킷 냉각수 계통
+  FO: 주기관 연료유 계통
+  GE: 발전기
+
+tags:
+  - tag: ME_RPM
+    system: ME
+    name: 주기관 회전수
+    unit: rpm
+    measure: [0, 130]
+    normal: [70, 98]
+    limits: { alarm_high: 105, shutdown_high: 110 }
+
+  - tag: ME_EXH_TEMP_CYL1
+    system: ME
+    name: 1번 실린더 배기가스 온도
+    unit: °C
+    measure: [0, 600]
+    normal: [300, 400]
+    limits: { alarm_high: 450, slowdown_high: 480 }
+  - tag: ME_EXH_TEMP_CYL2
+    system: ME
+    name: 2번 실린더 배기가스 온도
+    unit: °C
+    measure: [0, 600]
+    normal: [300, 400]
+    limits: { alarm_high: 450, slowdown_high: 480 }
+  - tag: ME_EXH_TEMP_CYL3
+    system: ME
+    name: 3번 실린더 배기가스 온도
+    unit: °C
+    measure: [0, 600]
+    normal: [300, 400]
+    limits: { alarm_high: 450, slowdown_high: 480 }
+  - tag: ME_EXH_TEMP_CYL4
+    system: ME
+    name: 4번 실린더 배기가스 온도
+    unit: °C
+    measure: [0, 600]
+    normal: [300, 400]
+    limits: { alarm_high: 450, slowdown_high: 480 }
+  - tag: ME_EXH_TEMP_CYL5
+    system: ME
+    name: 5번 실린더 배기가스 온도
+    unit: °C
+    measure: [0, 600]
+    normal: [300, 400]
+    limits: { alarm_high: 450, slowdown_high: 480 }
+  - tag: ME_EXH_TEMP_CYL6
+    system: ME
+    name: 6번 실린더 배기가스 온도
+    unit: °C
+    measure: [0, 600]
+    normal: [300, 400]
+    limits: { alarm_high: 450, slowdown_high: 480 }
+  - tag: ME_EXH_TEMP_TC_IN
+    system: ME
+    name: 과급기 입구 배기가스 온도
+    unit: °C
+    measure: [0, 700]
+    normal: [380, 460]
+    limits: { alarm_high: 500 }
+
+  - tag: ME_LO_PRESS_IN
+    system: LO
+    name: 주기관 윤활유 입구 압력
+    unit: bar
+    measure: [0, 6]
+    normal: [2.0, 2.6]
+    limits: { alarm_low: 1.7, slowdown_low: 1.5, shutdown_low: 1.3 }
+  - tag: ME_LO_TEMP_IN
+    system: LO
+    name: 주기관 윤활유 입구 온도
+    unit: °C
+    measure: [0, 100]
+    normal: [40, 50]
+    limits: { alarm_high: 55, slowdown_high: 60 }
+  - tag: LO_FILTER_DP
+    system: LO
+    name: 윤활유 필터 차압
+    unit: bar
+    measure: [0, 2]
+    normal: [0.1, 0.5]
+    limits: { alarm_high: 0.8 }
+  - tag: LO_SUMP_LEVEL
+    system: LO
+    name: 윤활유 섬프 탱크 레벨
+    unit: "%"
+    measure: [0, 100]
+    normal: [40, 80]
+    limits: { alarm_low: 30 }
+  - tag: LO_PUMP1_STATE
+    system: LO
+    name: 1번 윤활유 펌프 상태
+    states: [운전, 대기, 정지]
+  - tag: LO_PUMP2_STATE
+    system: LO
+    name: 2번 윤활유 펌프 상태
+    states: [운전, 대기, 정지]
+
+  - tag: ME_JCW_TEMP_IN
+    system: JCW
+    name: 재킷 냉각수 입구 온도
+    unit: °C
+    measure: [0, 150]
+    normal: [70, 78]
+  - tag: ME_JCW_TEMP_OUT
+    system: JCW
+    name: 재킷 냉각수 출구 온도
+    unit: °C
+    measure: [0, 150]
+    normal: [80, 88]
+    limits: { alarm_high: 92, slowdown_high: 95 }
+  - tag: ME_JCW_PRESS_IN
+    system: JCW
+    name: 재킷 냉각수 입구 압력
+    unit: bar
+    measure: [0, 10]
+    normal: [3.0, 4.5]
+    limits: { alarm_low: 2.5 }
+
+  - tag: ME_FO_PRESS_IN
+    system: FO
+    name: 주기관 연료유 입구 압력
+    unit: bar
+    measure: [0, 16]
+    normal: [7.0, 9.0]
+    limits: { alarm_low: 6.0 }
+
+  - tag: GE1_LOAD
+    system: GE
+    name: 1번 발전기 부하
+    unit: "%"
+    measure: [0, 120]
+    normal: [0, 85]
+    limits: { alarm_high: 95 }
+  - tag: GE2_LOAD
+    system: GE
+    name: 2번 발전기 부하
+    unit: "%"
+    measure: [0, 120]
+    normal: [0, 85]
+    limits: { alarm_high: 95 }

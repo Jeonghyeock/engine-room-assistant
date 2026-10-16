@@ -1,0 +1,1023 @@
+<?xml version="1.0"?>
+<DIV5 N="62" TYPE="PART" VOLUME="2" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-46/part-62&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;46 CFR Part 62&amp;quot;}">
+<HEAD>PART 62&#x2014;VITAL SYSTEM AUTOMATION
+</HEAD>
+<AUTH>
+<HED>Authority:</HED><PSPACE>46 U.S.C. 3306, 3703, 8105; sec. 617, Pub. L. 111-281, 124 Stat. 2905; E.O. 12234, 45 FR 58801, 3 CFR, 1980 Comp., p. 277; DHS Delegation No. 00170.1, Revision No. 01.4.
+</PSPACE></AUTH>
+<SOURCE>
+<HED>Source:</HED><PSPACE>CGD 81-030, 53 FR 17838, May 18, 1988, unless otherwise noted.
+</PSPACE></SOURCE>
+<DIV6 N="62.01" TYPE="SUBPART" VOLUME="2" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-46/part-62/subpart-62.01&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;46 CFR Part 62 Subpart 62.01&amp;quot;}">
+<HEAD>Subpart 62.01&#x2014;General Provisions</HEAD>
+<DIV8 N="62.01-1" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.01-1&quot;,&quot;citation&quot;:&quot;46 CFR 62.01-1&quot;}">
+<HEAD>&#xA7; 62.01-1 Purpose, preemptive effect.</HEAD>
+<P>The purpose of this part is to make sure that the safety of a vessel with automated vital systems, in maneuvering and all other sailing conditions, is equal to that of the vessel with the vital systems under direct manual operator supervision. The regulations in this part have preemptive effect over State or local regulations in the same field.</P>
+<CITA TYPE="N">[CGD 81-030, 53 FR 17838, May 18, 1988, as amended by USCG 2006-24797, 77 FR 33874, June 7, 2012]
+</CITA>
+</DIV8>
+
+<DIV8 N="62.01-3" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.01-3&quot;,&quot;citation&quot;:&quot;46 CFR 62.01-3&quot;}">
+<HEAD>&#xA7; 62.01-3 Scope.</HEAD>
+<P>(a) This part contains the minimum requirements for vessel automated vital systems. Specifically, this part contains&#x2014;</P>
+<P>(1) In subpart 62.25, the general requirements for all vital system automation;</P>
+<P>(2) In subpart 62.30, the criteria used to evaluate the designed reliability and safety of all automated vital systems;</P>
+<P>(3) In subpart 62.35, the minimum additional equipment, configuration, and functional requirements necessary when certain vital systems are automated; and</P>
+<P>(4) In subpart 62.50, the minimum additional requirements when automated systems are provided to replace specific personnel or to reduce overall crew requirements.</P>
+<P>(b) [Reserved]</P>
+<CITA TYPE="N">[CGD 81-030, 53 FR 17838, May 18, 1988, as amended by USCG-2020-0634, 89 FR 50189, June 12, 2024]
+</CITA>
+</DIV8>
+
+<DIV8 N="62.01-5" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.01-5&quot;,&quot;citation&quot;:&quot;46 CFR 62.01-5&quot;}">
+<HEAD>&#xA7; 62.01-5 Applicability.</HEAD>
+<P>(a) <I>Vessels.</I> This part applies to self-propelled vessels of 500 gross tons and over that are certificated under subchapters D, I, or U, to self-propelled vessels of 100 gross tons and over that are certificated under subchapter H, and to OSVs of at least 6,000 GT ITC (500 GRT if GT ITC is not assigned) as defined in &#xA7; 125.160 of this chapter.</P>
+<P>(b) <I>Systems and equipment.</I> Except as noted in paragraph (c) of this section, this part applies to automation of vital systems or equipment that&#x2014;</P>
+<P>(1) Is automatically controlled or monitored;</P>
+<P>(2) Is remotely controlled or monitored; or</P>
+<P>(3) Utilizes automation for the purpose of replacing specific personnel or to reduce overall crew requirements.</P>
+<P>(c) <I>Exceptions.</I> This part does not apply to the following systems and equipment unless they are specifically addressed or unless their failure would degrade the safety and reliability of the systems required by this part:</P>
+<P>(1) Automatic auxiliary heating equipment (see part 63 of this subchapter).</P>
+<P>(2) Steering systems (see subparts 58.25 and 111.93 of this chapter).</P>
+<P>(3) Non-vital and industrial systems.</P>
+<P>(4) The communication and alarm systems in part 113 of this chapter.</P>
+<P>(d) <I>Central control rooms.</I> The requirements of subpart 62.50 only apply to vessels automated to replace specific personnel or to reduce overall crew requirements, except where the main propulsion or ship service electrical generating plants are automatically or remotely controlled from a control room. In this case, &#xA7; 62.50-20(a)(3) (except the provision in paragraph (a)(3)(ii) relating to electrical power distribution), (b)(3), (c), (e)(1), (2), and (4), and (f)(2) apply, regardless of manning.</P>
+<CITA TYPE="N">[CGD 81-030, 53 FR 17838, May 18, 1988, as amended by USCG-2000-7790, 65 FR 58460, Sept. 29, 2000; USCG-2012-0208, 79 FR 48925, Aug. 18, 2014; USCG-2020-0634, 89 FR 50189, June 12, 2024]
+</CITA>
+</DIV8>
+
+</DIV6>
+<DIV6 N="62.05" TYPE="SUBPART" VOLUME="2" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-46/part-62/subpart-62.05&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;46 CFR Part 62 Subpart 62.05&amp;quot;}">
+<HEAD>Subpart 62.05&#x2014;Reference Specifications</HEAD>
+<SOURCE>
+<HED>Source:</HED><PSPACE>CGD 81-030, 53 FR 17838, May 18, 1988, as amended by USCG-2020-0634, 89 FR 50190, June 12, 2024, unless otherwise noted.
+</PSPACE></SOURCE>
+<DIV8 N="62.05-1" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.05-1&quot;,&quot;citation&quot;:&quot;46 CFR 62.05-1&quot;}">
+<HEAD>&#xA7; 62.05-1 Incorporation by reference.</HEAD>
+<P>Certain material is incorporated by reference into this part with the approval of the Director of the Federal Register under 5 U.S.C. 552(a) and 1 CFR part 51. To enforce any edition other than that specified in this section, the Coast Guard must publish a document in the <E T="04">Federal Register</E> and the material must be available to the public. All approved incorporation by reference (IBR) material is available for inspection at the U.S. Coast Guard and the National Archives and Records Administration (NARA). Contact U.S. Coast Guard Headquarters at: Commandant (CG-ENG), Attn: Office of Design and Engineering Standards, U.S. Coast Guard Stop 7509, 2703 Martin Luther King Jr. Avenue SE, Washington, DC 20593-7509; phone (202) 372-1375; email <I>typeapproval@uscg.mil</I>. For information on the availability of this material at NARA, visit <I>www.archives.gov/federal-register/cfr/ibr-locations</I> or email <I>fr.inspection@nara.gov</I>. The material may be obtained from: <I>American Bureau of Shipping (ABS),</I> 1701 City Plaza Drive, Spring, TX 77389; 281-877-6000; <I>CSC@eagle.org</I>; <I>ww2.eagle.org</I>.</P>
+<P>(a) Rules for Building and Classing Marine Vessels, Part 4, Vessel Systems and Machinery, January 2020 (&#x201C;ABS Marine Vessel Rules&#x201D;); IBR approved for &#xA7;&#xA7; 62.25-30(a); 62.35-5(d); 62.35-35; 62.35-40(c); 62.35-50 introductory text and table 1; 62.50-30(c) and (k).</P>
+<P>(b) [Reserved]</P>
+<CITA TYPE="N">[USCG-2003-16630, 73 FR 65189, Oct. 31, 2008, as amended by USCG-2009-0702, 74 FR 49229, Sept. 25, 2009; USCG-2012-0832, 77 FR 59778, Oct. 1, 2012; USCG-2013-0671, 78 FR 60149, Sept. 30, 2013]
+</CITA>
+</DIV8>
+
+</DIV6>
+<DIV6 N="62.10" TYPE="SUBPART" VOLUME="2" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-46/part-62/subpart-62.10&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;46 CFR Part 62 Subpart 62.10&amp;quot;}">
+<HEAD>Subpart 62.10&#x2014;Terms Used</HEAD>
+<SOURCE>
+<HED>Source:</HED><PSPACE>CGD 81-030, 53 FR 17838, May 18, 1988, as amended by USCG-2020-0634, 89 FR 50190, June 12, 2024, unless otherwise noted.
+</PSPACE></SOURCE>
+<DIV8 N="62.10-1" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.10-1&quot;,&quot;citation&quot;:&quot;46 CFR 62.10-1&quot;}">
+<HEAD>&#xA7; 62.10-1 Definitions.</HEAD>
+<P>For the purpose of this part:</P>
+<P><I>Alarm</I> means an audible and visual indication of a hazardous or potentially hazardous condition that requires attention.</P>
+<P><I>Automated</I> means the use of automatic or remote control, instrumentation, or alarms.</P>
+<P><I>Automatic control</I> means self-regulating in attaining or carrying out an operator-specified equipment response or sequence.</P>
+<P><I>Boiler low-low water level</I> is the minimum safe level in the boiler, in no case lower than that visible in the gage glass (see &#xA7; 52.01-110 of this subchapter).</P>
+<P><I>Engineering Control Center (ECC)</I> means the centralized engineering control, monitoring, and communications location.</P>
+<P><I>Failsafe</I> means that upon failure or malfunction of a component, subsystem, or system, the output automatically reverts to a pre-determined design state of least critical consequence. Typical failsafe states are listed in the following table:</P>
+<DIV width="100%"><DIV class="gpotbl_div">
+<TABLE border="1" cellpadding="1" cellspacing="1" class="gpo_table" frame="void" width="100%">
+<CAPTION><P class="title">Typical Failsafe States</P></CAPTION>
+<THEAD>
+<TR>
+<TH class="center border-top-single border-bottom-single border-right-single">System or component</TH>
+<TH class="center border-top-single border-bottom-single">Preferred failsafe state</TH>
+</TR>
+</THEAD>
+<TBODY>
+<TR>
+<TD class="left border-right-single">(1) Cooling water valve</TD>
+<TD class="left">As is or open.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">(2) Alarm system</TD>
+<TD class="left">Annunciate.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">(3) Safety system</TD>
+<TD class="left">Shut down, limited, or as is &amp; alarm.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">(4) Burner valve</TD>
+<TD class="left">Closed.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">(5) Propulsion speed control</TD>
+<TD class="left">As is.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">(6) Feedwater valve</TD>
+<TD class="left">As is or open.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">(7) Controllable pitch propeller</TD>
+<TD class="left">As is.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">(8) Propulsion safety trip</TD>
+<TD class="left">As is &amp; alarm.</TD>
+</TR>
+<TR>
+<TD class="left border-bottom-single border-right-single">(9) Fuel tank valve</TD>
+<TD class="left border-bottom-single">See &#xA7; 56.50-60(d) of this subchapter.</TD>
+</TR>
+</TBODY>
+</TABLE>
+</DIV></DIV>
+<P><I>Flooding safety</I> refers to flooding detection, watertight integrity, and dewatering systems.</P>
+<P><I>Independent</I> refers to equipment arranged to perform its required function regardless of the state of operation, or failure, of other equipment.</P>
+<P><I>Limit control</I> means a function of an automatic control system to restrict operation to a specified operating range or sequence without stopping the machinery.</P>
+<P><I>Local control</I> means operator control from a location where the equipment and its output can be directly manipulated and observed, <I>e.g.,</I> at the switchboard, motor controller, propulsion engine, or other equipment.</P>
+<P><I>Manual control</I> means operation by direct or power-assisted operator intervention.</P>
+<P><I>Monitor</I> means the use of direct observation, instrumentation, alarms, or a combination of these to determine equipment operation.</P>
+<P><I>Remote control</I> means non-local automatic or manual control.</P>
+<P><I>Safety trip control system</I> means a manually or automatically operated system that rapidly shuts down another system or subsystem.</P>
+<P><I>System</I> means a grouping or arrangement of elements that interact to perform a specific function and typically includes the following, as applicable:</P>
+<P>(1) A fuel or power source.</P>
+<P>(2) Power conversion elements.</P>
+<P>(3) Control elements.</P>
+<P>(4) Power transmission elements.</P>
+<P>(5) Instrumentation.</P>
+<P>(6) Safety control elements.</P>
+<P>(7) Conditioning elements.</P>
+<P><I>Vital system or equipment</I> is essential to the safety of the vessel, its passengers and crew. This typically includes, but is not limited to, the following:</P>
+<P>(1) Fire detection, alarm, and extinguishing systems.</P>
+<P>(2) Flooding safety systems.</P>
+<P>(3) Ship service and emergency electrical generators, switchgear, and motor control circuits serving vital electrical loads.</P>
+<P>(4) The emergency equipment and systems listed in &#xA7; 112.15 of this chapter.</P>
+<P>(5) Propulsion systems, including those provided to meet &#xA7; 58.01-35 of this subchapter.</P>
+<P>(6) Steering systems.</P>
+</DIV8>
+
+</DIV6>
+<DIV6 N="62.15" TYPE="SUBPART" VOLUME="2" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-46/part-62/subpart-62.15&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;46 CFR Part 62 Subpart 62.15&amp;quot;}">
+<HEAD>Subpart 62.15&#x2014;Equivalents</HEAD>
+<SOURCE>
+<HED>Source:</HED><PSPACE>CGD 81-030, 53 FR 17838, May 18, 1988, as amended by USCG-2020-0634, 89 FR 50190, June 12, 2024, unless otherwise noted.
+</PSPACE></SOURCE>
+<DIV8 N="62.15-1" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.15-1&quot;,&quot;citation&quot;:&quot;46 CFR 62.15-1&quot;}">
+<HEAD>&#xA7; 62.15-1 Conditions under which equivalents may be used.</HEAD>
+<P>(a) The Coast Guard accepts a substitute or alternate for the requirements of this part if it provides an equivalent level of safety and reliability. Demonstration of functional equivalence must include comparison of a qualitative failure analysis based on the requirements of this part with a comparable analysis of the proposed substitute or alternate.</P>
+<P>(b) [Reserved]</P>
+</DIV8>
+
+</DIV6>
+<DIV6 N="62.20" TYPE="SUBPART" VOLUME="2" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-46/part-62/subpart-62.20&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;46 CFR Part 62 Subpart 62.20&amp;quot;}">
+<HEAD>Subpart 62.20&#x2014;Plan Submittal</HEAD>
+<SOURCE>
+<HED>Source:</HED><PSPACE>CGD 81-030, 53 FR 17838, May 18, 1988, as amended by USCG-2020-0634, 89 FR 50190, June 12, 2024, unless otherwise noted.
+</PSPACE></SOURCE>
+<DIV8 N="62.20-1" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.20-1&quot;,&quot;citation&quot;:&quot;46 CFR 62.20-1&quot;}">
+<HEAD>&#xA7; 62.20-1 Plans for approval.</HEAD>
+<P>(a) The following plans must be submitted to the Coast Guard for approval in accordance with &#xA7;&#xA7; 50.20-5 and 50.20-10 of this chapter:</P>
+<P>(1) A general arrangement plan of control and monitoring equipment, control locations, and the systems served.</P>
+<P>(2) Control and monitoring console, panel, and enclosure layouts.</P>
+<P>(3) Schematic or logic diagrams including functional relationships, a written description of operation, and sequences of events for all modes of operation.</P>
+<P>(4) A description of control or monitoring system connections to non-vital systems.</P>
+<P>(5) A description of programmable features.</P>
+<P>(6) A description of built-in test features and diagnostics.</P>
+<P>(7) Design Verification and Periodic Safety test procedures described in subpart 61.40 of this subchapter.</P>
+<P>(8) Control system normal and emergency operating instructions.</P>
+<P>(b) [Reserved]</P>
+<CITA TYPE="N">[CGD 81-030, 53 FR 17838, May 18, 1988, as amended by USCG-2014-0688, 79 FR 58280, Sept. 29, 2014]
+</CITA>
+</DIV8>
+
+<DIV8 N="62.20-3" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.20-3&quot;,&quot;citation&quot;:&quot;46 CFR 62.20-3&quot;}">
+<HEAD>&#xA7; 62.20-3 Plans for information.</HEAD>
+<P>(a) One copy of the following plans must be submitted to the Officer in Charge, Marine Inspection, for use in the evaluation of automated systems provided to replace specific personnel or to reduce overall crew requirements:</P>
+<P>(1) Proposed manning, crew organization and utilization, including routine maintenance, all operational evolutions, and emergencies.</P>
+<P>(2) A planned maintenance program for all vital systems.</P>
+<P>(b) One copy of a qualitative failure analysis must be submitted in accordance with &#xA7; 50.20-5 of this subchapter for the following:</P>
+<P>(1) Propulsion controls.</P>
+<P>(2) Microprocessor-based system hardware.</P>
+<P>(3) Safety controls.</P>
+<P>(4) Automated electric power management.</P>
+<P>(5) Automation required to be independent that is not physically separate.</P>
+<P>(6) Any other automation that, in the judgment of the Commandant, potentially constitutes a safety hazard to the vessel or personnel in case of failure.</P>
+<NOTE>
+<HED>Note 1 to paragraph (<E T="01">b</E>):</HED>
+<P>The qualitative failure analysis is intended to assist in evaluating the safety and reliability of the design. It should be conducted to a level of detail necessary to demonstrate compliance with applicable requirements and should follow standard qualitative analysis procedures. Assumptions, operating conditions considered, failures considered, cause and effect relationships, how failures are detected by the crew, alternatives available to the crew, and possible design verification tests necessary should be included. Questions regarding failure analysis should be referred to the Marine Safety Center at an early stage of design.</P></NOTE>
+<CITA TYPE="N">[CGD 81-030, 53 FR 17838, May 18, 1988, as amended by USCG-2014-0688, 79 FR 58280, Sept. 29, 2014]
+</CITA>
+</DIV8>
+
+<DIV8 N="62.20-5" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.20-5&quot;,&quot;citation&quot;:&quot;46 CFR 62.20-5&quot;}">
+<HEAD>&#xA7; 62.20-5 Self-certification.</HEAD>
+<P>(a) The designer or manufacturer of an automated system must certify to the Coast Guard, in writing, that the automation is designed to meet the environmental design standards of &#xA7; 62.25-30. Plan review, shipboard testing, or independent testing to these standards is not required.</P>
+<P>(b) [Reserved]</P>
+<NOTE>
+<HED>Note 1 to &#xA7; 62.20-5:</HED>
+<P>Self-certification should normally accompany plan submittal.</P></NOTE>
+</DIV8>
+
+</DIV6>
+<DIV6 N="62.25" TYPE="SUBPART" VOLUME="2" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-46/part-62/subpart-62.25&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;46 CFR Part 62 Subpart 62.25&amp;quot;}">
+<HEAD>Subpart 62.25&#x2014;General Requirements for All Automated Vital Systems</HEAD>
+<DIV8 N="62.25-1" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.25-1&quot;,&quot;citation&quot;:&quot;46 CFR 62.25-1&quot;}">
+<HEAD>&#xA7; 62.25-1 General.</HEAD>
+<P>(a) Vital systems that are automatically or remotely controlled must be provided with&#x2014;</P>
+<P>(1) An effective primary control system;</P>
+<P>(2) A manual alternate control system;</P>
+<P>(3) A safety control system, if required by &#xA7; 62.25-15;</P>
+<P>(4) Instrumentation to monitor system parameters necessary for the safe and effective operation of the system; and</P>
+<P>(5) An alarm system if instrumentation is not continuously monitored or is inappropriate for detection of a failure or unsafe condition.</P>
+<P>(b) Automation systems or subsystems that control or monitor more than one safety control, interlock, or operating sequence must perform all assigned tasks continuously, i.e., the detection of unsafe conditions must not prevent control or monitoring of other conditions.</P>
+<P>(c) Each console for a vital control or alarm system and any similar enclosure that relies upon forced cooling for proper operation of the system must have a backup means of providing cooling. It must also have an alarm activated by the failure of the temperature-control system.</P>
+<CITA TYPE="N">[CGD 81-030, 53 FR 17838, May 18, 1988, as amended by USCG-2003-16630, 73 FR 65189, Oct. 31, 2008]
+</CITA>
+</DIV8>
+
+<DIV8 N="62.25-5" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.25-5&quot;,&quot;citation&quot;:&quot;46 CFR 62.25-5&quot;}">
+<HEAD>&#xA7; 62.25-5 All control systems.</HEAD>
+<P>(a) Local and remote starting for any propulsion engine or turbine equipped with a jacking or turning gear must be prevented while the turning gear is engaged.</P>
+<P>(b) Automatic control systems must be stable over the entire range of normal operation.</P>
+<P>(c) Inadvertent grounding of an electrical or electronic safety control system must not cause safety control operation or safety control bypassing.</P>
+<CITA TYPE="N">[CGD 81-030, 53 FR 17838, May 18, 1988, as amended by USCG-2003-16630, 73 FR 65189, Oct. 31, 2008]
+</CITA>
+</DIV8>
+
+<DIV8 N="62.25-10" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.25-10&quot;,&quot;citation&quot;:&quot;46 CFR 62.25-10&quot;}">
+<HEAD>&#xA7; 62.25-10 Manual alternate control systems.</HEAD>
+<P>(a) Manual alternate control systems must&#x2014;</P>
+<P>(1) Be operable in an emergency and after a remote or automatic primary control system failure;</P>
+<P>(2) Be suitable for manual control for prolonged periods;</P>
+<P>(3) Be readily accessible and operable; and</P>
+<P>(4) Include means to override automatic controls and interlocks, as applicable.</P>
+<P>(b) Permanent communications must be provided between primary remote control locations and manual alternate control locations if operator attendance is necessary to maintain safe alternate control.</P>
+<NOTE>
+<HED>Note 1 to paragraph (<E T="01">b</E>):</HED>
+<P>Typically, this includes main boiler fronts and local propulsion control.</P></NOTE>
+<CITA TYPE="N">[CGD 81-030, 53 FR 17838, May 18, 1988, as amended by USCG-2020-0634, 89 FR 50191, June 12, 2024]
+</CITA>
+</DIV8>
+
+<DIV8 N="62.25-15" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.25-15&quot;,&quot;citation&quot;:&quot;46 CFR 62.25-15&quot;}">
+<HEAD>&#xA7; 62.25-15 Safety control systems.</HEAD>
+<P>(a) Minimum safety and trip controls required for specific types of automated vital systems are listed in table 1 to &#xA7; 62.35-50.</P>
+<NOTE>
+<HED>Note 1 to paragraph (<E T="01">a</E>):</HED>
+<P>Safety control systems include automatic and manual safety trip controls and automatic safety limit controls.</P></NOTE>
+<P>(b) Safety trip controls must not operate as a result of failure of the normal electrical power source unless it is determined to be the failsafe state.</P>
+<P>(c) Automatic operation of a safety control must be alarmed in the machinery spaces and at the cognizant remote-control location.</P>
+<P>(d) Local manual safety trip controls must be provided for all main boilers, turbines, and internal combustion engines.</P>
+<P>(e) Automatic safety trip control systems must&#x2014;</P>
+<P>(1) Be provided where there is an immediate danger that a failure will result in serious damage, complete breakdown, fire, or explosion;</P>
+<P>(2) Require manual reset prior to renewed operation of the equipment; and</P>
+<P>(3) Not be provided if safety limit controls provide a safe alternative and trip would result in loss of propulsion.</P>
+<CITA TYPE="N">[CGD 81-030, 53 FR 17838, May 18, 1988, as amended by USCG-2020-0634, 89 FR 50191, June 12, 2024]
+</CITA>
+</DIV8>
+
+<DIV8 N="62.25-20" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.25-20&quot;,&quot;citation&quot;:&quot;46 CFR 62.25-20&quot;}">
+<HEAD>&#xA7; 62.25-20 Instrumentation, alarms, and centralized stations.</HEAD>
+<P>(a) <I>General.</I> Minimum instrumentation and alarms required for specific types of automated vital systems are listed in table 1 to &#xA7; 62.35-50.</P>
+<P>(b) <I>Instrumentation Location.</I> (1) Manual control locations, including remote manual control and manual alternate control, must be provided with the instrumentation necessary for safe operation from that location.</P>
+<NOTE>
+<HED>Note 1 to paragraph (<E T="01">b</E>)(1):</HED>
+<P>Typically, instrumentation includes means to monitor the output of the monitored system.</P></NOTE>
+<P>(2) Systems with remote instrumentation must have provisions for the installation of instrumentation at the monitored system equipment.</P>
+<P>(3) The status of automatically or remotely controlled vital auxiliaries, power sources, switches, and valves must be visually indicated in the machinery spaces or the cognizant remote-control location, as applicable.</P>
+<NOTE>
+<HED>Note 2 to paragraph (<E T="01">b</E>)(3):</HED>
+<P>Status indicators include run, standby, off, open, closed, tripped, and on, as applicable. Status indicators at remote control locations other than the ECC, if provided, may be summarized. Equipment normally provided with status indicators are addressed in table 1 to &#xA7; 62.35-50, subpart 58.01 subpart 56.50 of this subchapter, and subpart 112.45 of this chapter.</P></NOTE>
+<P>(4) Sequential interlocks provided in control systems to ensure safe operation, such as boiler programming control or reversing of propulsion diesels, must have summary indicators in the machinery spaces and at the cognizant control location to show if the interlocks are satisfied.</P>
+<P>(5) Instrumentation listed in table 1 to &#xA7; 62.35-50 must be of the continuous display type or the demand display type. Displays must be in the ECC or in the machinery spaces if an ECC is not provided.</P>
+<P>(c) <I>Instrumentation details.</I> Demand instrumentation displays must be clearly readable and immediately available to the operator.</P>
+<P>(d) <I>Alarms.</I> (1) All alarms must clearly distinguish among&#x2014;</P>
+<P>(i) Normal, alarm, and acknowledged alarm conditions; and</P>
+<P>(ii) Fire, general alarm, carbon dioxide/clean agent fire extinguishing system, vital machinery, flooding, engineers' assistance-needed, and non-vital alarms.</P>
+<P>(2) Required alarms in high ambient noise areas must be supplemented by visual means, such as rotating beacons, that are visible throughout these areas. Red beacons must only be used for general or fire alarm purposes.</P>
+<P>(3) Automatic transfer to required backup or redundant systems or power sources must be alarmed in the machinery spaces.</P>
+<P>(4) Flooding safety, fire, loss of power, and engineers' assistance-needed alarms extended from the machinery spaces to a remote location must not have a duty crewmember selector.</P>
+<NOTE>
+<HED>Note 3 to paragraph (<E T="01">d</E>)(4):</HED>
+<P>Other alarms may be provided with such a selector, provided there is no off position.</P></NOTE>
+<P>(5) Automation alarms must be separate and independent of the following:</P>
+<P>(i) The fire detection and alarm systems.</P>
+<P>(ii) The general alarm.</P>
+<P>(iii) CO<E T="52">2</E> release alarms.</P>
+<P>(6) Failure of an automatic control, remote control, or alarm system must be immediately alarmed in the machinery spaces and at the ECC, if provided.</P>
+<P>(e) <I>Alarm details.</I> (1) All alarms must&#x2014;</P>
+<P>(i) Have a manual acknowledgement device (No other means to reduce or eliminate the annunciated signal may be provided except dimmers described in paragraph (g)(2) of this section);</P>
+<P>(ii) Be continuously powered;</P>
+<P>(iii) Be provided with a means to test audible and visual annunciators;</P>
+<P>(iv) Provide for normal equipment starting and operating transients and vessel motions, as applicable, without actuating the alarm;</P>
+<P>(v) Be able to simultaneously indicate more than one alarm condition, as applicable;</P>
+<P>(vi) Visually annunciate until the alarm is manually acknowledged and the alarm condition is cleared;</P>
+<P>(vii) Audibly annunciate until manually acknowledged;</P>
+<P>(viii) Not prevent annunciation of subsequent alarms because of previous alarm acknowledgement; and</P>
+<P>(ix) Automatically reset to the normal operating condition only after the alarm has been manually acknowledged and the alarm condition is cleared.</P>
+<P>(2) Visual alarms must initially indicate the equipment or system malfunction without operator intervention.</P>
+<P>(3) Power failure alarms must monitor on the load side of the last supply protective device.</P>
+<P>(f) <I>Summarized and grouped alarms.</I> Visual alarms at a control location that are summarized or grouped by function, system, or item of equipment must&#x2014;</P>
+<P>(1) Be sufficiently specific to allow any necessary action to be taken; and</P>
+<P>(2) Have a display at the equipment or an appropriate control location to identify the specific alarm condition or location.</P>
+<P>(g) <I>Central control locations.</I> (1) Central control locations must&#x2014;</P>
+<P>(i) Be arranged to allow the operator to safely and efficiently communicate, control, and monitor the vital systems under normal and emergency conditions, with a minimum of operator confusion and distraction;</P>
+<P>(ii) Be on a single deck level; and</P>
+<P>(iii) Co-locate control devices and instrumentation to allow visual assessment of system response to control input.</P>
+<P>(2) Visual alarms and instruments on the navigating bridge must not interfere with the crew's vision. Dimmers must not eliminate visual indications.</P>
+<P>(3) Alarms and instrumentation at the main navigating bridge control location must be limited to those that require the attention or action of the officer on watch, are required by this chapter, or that would result in increased safety.</P>
+<CITA TYPE="N">[CGD 81-030, 53 FR 17838, May 18, 1988, as amended by USCG-2006-24797, 77 FR 33874, June 7, 2012; USCG-2014-0688, 79 FR 58280, Sept. 29, 2014; USCG-2020-0634, 89 FR 50191, June 12, 2024]
+</CITA>
+</DIV8>
+
+<DIV8 N="62.25-25" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.25-25&quot;,&quot;citation&quot;:&quot;46 CFR 62.25-25&quot;}">
+<HEAD>&#xA7; 62.25-25 Programmable systems and devices.</HEAD>
+<P>(a) Programmable control or alarm system logic must not be altered after Design Verification testing without the approval of the cognizant Officer in Charge, Marine Inspection (OCMI). (See subpart 61.40 of this subchapter, Design Verification Tests). Safety control or automatic alarm systems must be provided with means, acceptable to the cognizant OCMI, to make sure setpoints remain within the safe operating range of the equipment.</P>
+<P>(b) Operating programs for microprocessor-based or computer-based vital control, alarm, and monitoring systems must be stored in non-volatile memory and automatically operate on supply power resumption.</P>
+<P>(c) If a microprocessor-based or computer-based system serves both vital and non-vital systems, hardware and software priorities must favor the vital systems.</P>
+<P>(d) All required manuals, records, and instructions for automatic or remote control or monitoring systems must be readily available aboard the vessel.</P>
+<CITA TYPE="N">[CGD 81-030, 53 FR 17838, May 18, 1988; 53 FR 19090, May 26, 1988; USCG-2014-0688, 79 FR 58280, Sept. 29, 2014; USCG-2020-0634, 89 FR 50192, June 12, 2024]
+</CITA>
+</DIV8>
+
+<DIV8 N="62.25-30" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.25-30&quot;,&quot;citation&quot;:&quot;46 CFR 62.25-30&quot;}">
+<HEAD>&#xA7; 62.25-30 Environmental design standards.</HEAD>
+<P>(a) All automation must be suitable for the marine environment and must be designed and constructed to operate indefinitely under the following conditions:</P>
+<P>(1) Ship motion and vibration described in Table 1 of section 4-9-9 of the ABS Marine Vessel Rules (incorporated by reference; see &#xA7; 62.05-1); note that inclination requirements for fire and flooding safety systems are described in &#xA7; 112.05-5(c) of this chapter.</P>
+<P>(2) Ambient air temperatures described in Table 1 of part 4-9-9/3 of the ABS Marine Vessel Rules.</P>
+<P>(3) Electrical voltage and frequency tolerances described in Table 1 of part 4-9-9 of the ABS Marine Vessel Rules.</P>
+<P>(4) Relative humidity of 0 to 95% at 45 &#xB0;C.</P>
+<P>(5) Hydraulic and pneumatic pressure variations described in Table 1 of part 4-9-9 of the ABS Marine Vessel Rules.</P>
+<NOTE>
+<HED>Note 1 to paragraph (<E T="01">a</E>):</HED>
+<P>Considerations should include normal dynamic conditions that might exceed these values, such as switching, valve closure, power supply transfer, starting, and shutdown.</P></NOTE>
+<P>(b) Low voltage electronics must be designed with due consideration for static discharge, electromagnetic interference, voltage transients, fungal growth, and contact corrosion.</P>
+<CITA TYPE="N">[USCG-2020-0634, 89 FR 50192, June 12, 2024]
+</CITA>
+</DIV8>
+
+</DIV6>
+<DIV6 N="62.30" TYPE="SUBPART" VOLUME="2" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-46/part-62/subpart-62.30&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;46 CFR Part 62 Subpart 62.30&amp;quot;}">
+<HEAD>Subpart 62.30&#x2014;Reliability and Safety Criteria, All Automated Vital Systems</HEAD>
+<DIV8 N="62.30-1" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.30-1&quot;,&quot;citation&quot;:&quot;46 CFR 62.30-1&quot;}">
+<HEAD>&#xA7; 62.30-1 Failsafe.</HEAD>
+<P>(a) The failsafe state must be evaluated for each subsystem, system, or vessel to determine the least critical consequence.</P>
+<P>(b) All automatic control, remote control, safety control, and alarm systems must be failsafe.</P>
+</DIV8>
+
+<DIV8 N="62.30-5" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.30-5&quot;,&quot;citation&quot;:&quot;46 CFR 62.30-5&quot;}">
+<HEAD>&#xA7; 62.30-5 Independence.</HEAD>
+<P>(a) Single non-concurrent failures in control, alarm, or instrumentation systems, and their logical consequences, must not prevent sustained or restored operation of any vital system or systems.</P>
+<P>(b)(1) Except as provided in paragraphs (b)(2) and (b)(3) of this section, primary control, alternate control, safety control, and alarm and instrumentation systems for any vital system must be independent of each other.</P>
+<P>(2) Independent sensors are not required except that sensors for primary speed, pitch, or direction of rotation control in closed loop propulsion control systems must be independent and physically separate from required safety control, alarm, or instrumentation sensors.</P>
+<P>(3) The safety trip control of &#xA7; 62.35-5(b)(2) must be independent and physically separate from all other systems.</P>
+<P>(c) Two independent sources of power must be provided for all primary control, safety control, instrumentation and alarm systems. Failure of the normal source of power must actuate an alarm in the machinery spaces. One source must be from the emergency power source (see part 112 of this chapter, Emergency Lighting and Power Systems) unless one of the sources is&#x2014;</P>
+<P>(1) Derived from the power supply of the system being controlled or monitored;</P>
+<P>(2) A power take-off of that system; of</P>
+<P>(3) An independent power source equivalent to the emergency power source.</P>
+</DIV8>
+
+<DIV8 N="62.30-10" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.30-10&quot;,&quot;citation&quot;:&quot;46 CFR 62.30-10&quot;}">
+<HEAD>&#xA7; 62.30-10 Testing.</HEAD>
+<P>(a) Automated vital systems must be tested in accordance with subpart 61.40 of this subchapter.</P>
+<P>(b) On-line built-in test equipment must not lock out or override safety trip control systems. This equipment must indicate when it is active.</P>
+<CITA TYPE="N">[CGD 81-030, 53 FR 17838, May 18, 1988, as amended by USCG-2020-0634, 89 FR 50192, June 12, 2024]
+</CITA>
+</DIV8>
+
+</DIV6>
+<DIV6 N="62.35" TYPE="SUBPART" VOLUME="2" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-46/part-62/subpart-62.35&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;46 CFR Part 62 Subpart 62.35&amp;quot;}">
+<HEAD>Subpart 62.35&#x2014;Requirements for Specific Types of Automated Vital Systems</HEAD>
+<SOURCE>
+<HED>Source:</HED><PSPACE>CGD 81-030, 53 FR 17838, May 18, 1988, as amended by USCG-2020-0634, 89 FR 50192, June 12, 2024, unless otherwise noted.
+</PSPACE></SOURCE>
+<DIV8 N="62.35-1" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.35-1&quot;,&quot;citation&quot;:&quot;46 CFR 62.35-1&quot;}">
+<HEAD>&#xA7; 62.35-1 General.</HEAD>
+<P>(a) Minimum instrumentation, alarms, and safety controls required for specific types of automated vital systems are listed in table 1 to &#xA7; 62.35-50.</P>
+<P>(b) Automatic propulsion systems, automated electric power management systems, and all associated subsystems and equipment must be capable of meeting load demands from standby to full system rated load, under steady state and maneuvering conditions, without need for manual adjustment or manipulation.</P>
+</DIV8>
+
+<DIV8 N="62.35-5" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.35-5&quot;,&quot;citation&quot;:&quot;46 CFR 62.35-5&quot;}">
+<HEAD>&#xA7; 62.35-5 Remote propulsion-control systems.</HEAD>
+<P>(a) <I>Manual propulsion control.</I> All vessels having remote propulsion control from the navigating bridge, an ECC or maneuvering platform, or elsewhere must have a manual alternate propulsion control located at the equipment.</P>
+<NOTE>
+<HED>Note 1 to paragraph (a):
+</HED>
+<P>Separate local control locations may be provided for each independent propeller.</P></NOTE>
+<P>(b) <I>Centralized propulsion control equipment.</I> Navigating bridge, ECC, maneuvering platform, and manual alternate control locations must include&#x2014;</P>
+<P>(1) Control of the speed and direction of thrust for each independent propeller controlled;</P>
+<P>(2) A guarded manually actuated safety trip control (which stops the propelling machinery) for each independent propeller controlled;</P>
+<P>(3) Shaft speed and thrust direction indicators for each independent propeller controlled;</P>
+<P>(4) The means to pass propulsion orders required by &#xA7;&#xA7; 113.30-5 and 113.35-3 of this chapter; and</P>
+<P>(5) The means required by paragraph (d) of this section to achieve control location transfer and independence.</P>
+<P>(c) <I>Main navigating bridge propulsion control.</I> (1) Navigating bridge remote propulsion control must be performed by a single control device for each independent propeller. Control must include automatic performance of all associated services, and must not permit rate of movement of the control device to overload the propulsion machinery.</P>
+<P>(2) On vessels propelled by steam turbines, the navigation bridge primary control system must include safety alarms for high and low boiler water levels and low steam pressure.</P>
+<P>(3) On vessels propelled by internal combustion engines, an alarm must annunciate on the navigating bridge and at the maneuvering platform or ECC, if provided, to indicate starting capability less than 50% of that required by &#xA7; 62.35-35.</P>
+<P>(d) <I>Transfer of control location.</I> Transfer of control location must meet section 4-9-2/13.11 of the ABS Marine Vessel Rules (incorporated by reference; see &#xA7; 62.05-1). Manual alternative-propulsion-control locations must be capable of overriding, and of operating independent of, all remote and automatic propulsion-control locations.</P>
+<P>(e) <I>Control system details.</I> (1) Each operator control device must have a detent at the zero-thrust position.</P>
+<P>(2) Propulsion machinery automatic safety trip control operation must only occur when continued operation could result in serious damage, complete breakdown, or explosion of the equipment. Other than the overrides mentioned in &#xA7; 62.25-10(a)(4) and temporary overrides located at the main navigating bridge control location, overrides of these safety trip controls are prohibited. Operation of permitted overrides must be alarmed at the navigating bridge and at the maneuvering platform or ECC, as applicable, and must be guarded against inadvertent operation.</P>
+<P>(3) Remote propulsion control systems must be failsafe by maintaining the preset (as is) speed and direction of thrust until local manual or alternate manual control is in operation, or the manual safety trip control operates. Failure must activate alarms on the navigating bridge and in the machinery spaces.</P>
+<CITA TYPE="N">[CGD 81-030, 53 FR 17838, May 18, 1988; 53 FR 19090, May 26, 1988, as amended by USCG-2003-16630, 73 FR 65189, Oct. 31, 2008; USCG-2011-0618, 76 FR 60754, Sept. 30, 2011]
+</CITA>
+</DIV8>
+
+<DIV8 N="62.35-10" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.35-10&quot;,&quot;citation&quot;:&quot;46 CFR 62.35-10&quot;}">
+<HEAD>&#xA7; 62.35-10 Flooding safety.</HEAD>
+<P>(a) Automatic bilge pumps must&#x2014;</P>
+<P>(1) Be provided with bilge high level alarms that annunciate in the machinery spaces and at a manned control location and are independent of the pump controls;</P>
+<P>(2) Be monitored to detect excessive operation in a specified time period; and</P>
+<P>(3) Meet all applicable pollution control requirements.</P>
+<P>(b) Remote controls for flooding safety equipment must remain functional under flooding conditions.</P>
+<P>(c) Remote bilge level sensors, where provided, must be located to detect flooding at an early stage and to provide redundant coverage.</P>
+</DIV8>
+
+<DIV8 N="62.35-15" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.35-15&quot;,&quot;citation&quot;:&quot;46 CFR 62.35-15&quot;}">
+<HEAD>&#xA7; 62.35-15 Fire safety.</HEAD>
+<P>(a) All required fire pump remote control locations must include the controls necessary to charge the firemain and&#x2014;</P>
+<P>(1) A firemain pressure indicator; or</P>
+<P>(2) A firemain low-pressure alarm.</P>
+<P>(b) [Reserved]</P>
+</DIV8>
+
+<DIV8 N="62.35-20" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.35-20&quot;,&quot;citation&quot;:&quot;46 CFR 62.35-20&quot;}">
+<HEAD>&#xA7; 62.35-20 Oil-fired main boilers.</HEAD>
+<P>(a) <I>General.</I> (1) All main boilers, regardless of intended mode of operation, must be provided with the automatic safety trip control system(s) of paragraphs (h)(1), (h)(2)(i) and (ii), and (i) of this section to prevent unsafe conditions after light off.</P>
+<P>(2) Manual alternate control of boilers must be located at the boiler front.</P>
+<P>(3) A fully automatic main boiler must include&#x2014;</P>
+<P>(i) Automatic combustion control;</P>
+<P>(ii) Programming control;</P>
+<P>(iii) Automatic feedwater control;</P>
+<P>(iv) Safety controls; and</P>
+<P>(v) An alarm system.</P>
+<P>(4) Following system line-up and starting of auxiliaries, fully automatic main boilers must only require the operator to initiate the following sequences:</P>
+<P>(i) Boiler pre-purge.</P>
+<P>(ii) Trial for ignition of burners subsequent to successful initial burner light-off.</P>
+<P>(iii) Normal shutdown.</P>
+<P>(iv) Manual safety trip control operation.</P>
+<P>(v) Adjustment of primary control setpoints.</P>
+<P>(5) All requirements for programming control subsystems and safety control systems must be met when a boiler&#x2014;</P>
+<P>(i) Automatically sequences burners;</P>
+<P>(ii) Is operated from a location remote from the boiler front; or</P>
+<P>(iii) Is fully automatic.</P>
+<P>(6) Where light oil pilots are used, the programming control and burner safety trip controls must be provided for the light oil system. Trial for ignition must not exceed 15 seconds and the main burner trial for ignition must not proceed until the pilot flame is proven.</P>
+<P>(b) <I>Feedwater control.</I> Automatic feedwater control subsystems must sense, at a minimum, boiler water level and steam flow.</P>
+<P>(c) <I>Combustion control.</I> Automatic combustion control subsystems must provide&#x2014;</P>
+<P>(1) An air/fuel ratio which ensures complete combustion and stable flame with the fuel in use, under light off, steady state, and transient conditions; and</P>
+<P>(2) Stable boiler steam pressure and outlet temperatures under steady state and transient load conditions; and</P>
+<P>(3) A low fire interlock to prevent high firing rates and superheater damage during boiler warm up.</P>
+<P>(d) <I>Programming control.</I> The programming control must provide a programed sequence of interlocks for the safe ignition and normal shutdown of the boiler burners. The programming control must prevent ignition if unsafe conditions exist and must include the following minimum sequence of events and interlocks:</P>
+<P>(1) <I>Prepurge.</I> Boilers must undergo a continuous purge of the combustion chamber and convecting spaces to make sure of a minimum of 5 changes of air. The purge must not be less than 15 seconds in duration, and must occur immediately prior to the trial for ignition of the initial burner of a boiler. All registers and dampers must be open and an air flow of at least 25 percent of the full load volumetric air flow must be proven before the purge period commences. The prepurge must be complete before trial for ignition of the initial burner.</P>
+<P>(2) <I>Trial for ignition and ignition.</I> (i) Only one burner per boiler is to be in trial for ignition at any time.</P>
+<P>(ii) Total boiler air flow during light off must be sufficient to prevent pocketing and explosive accumulations of combustible gases.</P>
+<P>(iii) The burner igniter must be in position and proven energized before admission of fuel to the boiler. The igniter must remain energized until the burner flame is established and stable, or until the trial for ignition period ends.</P>
+<P>(iv) The trial for ignition period must be as short as practical for the specific installation, but must not exceed 15 seconds.</P>
+<P>(v) Failure of the burner to ignite during a trial for ignition must automatically actuate the burner safety trip controls.</P>
+<P>(3) <I>Post-purge.</I> (i) Immediately after normal shutdown of the boiler, an automatic purge of the boiler equal to the volume and duration of the prepurge must occur.</P>
+<P>(ii) Following boiler safety trip control operation, the air flow to the boiler must not automatically increase. Post purge in such cases must be under manual control.</P>
+<P>(e) <I>Burner fuel oil valves.</I> Each burner must be provided with a valve that is&#x2014;</P>
+<P>(1) Automatically closed by the burner or boiler safety trip control system; and</P>
+<P>(2) Operated by the programming control or combustion control subsystems, as applicable.</P>
+<P>(f) <I>Master fuel oil valves.</I> Each boiler must be provided with a master fuel oil valve to stop fuel to the boiler automatically upon actuation by the boiler safety trip control system.</P>
+<P>(g) <I>Valve closure time.</I> The valves described in paragraphs (e) and (f) of this section must close within 4 seconds of automatic detection of unsafe trip conditions.</P>
+<P>(h) <I>Burner safety trip control system.</I> (1) Each burner must be provided with at least one flame detector.</P>
+<P>(2) The burner valve must automatically close when&#x2014;</P>
+<P>(i) Loss of burner flame occurs;</P>
+<P>(ii) Actuated by the boiler safety trip control system;</P>
+<P>(iii) The burner is not properly seated or in place; or</P>
+<P>(iv) Trial for ignition fails, if a programming control is provided.</P>
+<P>(i) <I>Boiler safety trip control system.</I> (1) Each boiler must be provided with a safety trip control system that automatically closes the master and all burner fuel oil valves upon&#x2014;</P>
+<P>(i) Boiler low-low water level;</P>
+<P>(ii) Inadequate boiler air flow to support complete combustion;</P>
+<P>(iii) Loss of boiler control power;</P>
+<P>(iv) Manual safety trip operation; or</P>
+<P>(v) Loss of flame at all burners.</P>
+<P>(2) The low-low water level safety trip control must account for normal vessel motions and operating transients.</P>
+<CITA TYPE="N">[CGD 81-030, 53 FR 17838, May 18, 1988, as amended by USCG-2002-13058, 67 FR 61278, Sept. 30, 2002]
+</CITA>
+</DIV8>
+
+<DIV8 N="62.35-35" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.35-35&quot;,&quot;citation&quot;:&quot;46 CFR 62.35-35&quot;}">
+<HEAD>&#xA7; 62.35-35 Starting systems for internal-combustion engines.</HEAD>
+<P>The starting systems for propulsion engines and for prime movers of ships' service generators required to start automatically must meet sections 4-6-5/9.5 and 4-8-2/11.11 of the ABS Marine Vessel Rules (incorporated by reference; see &#xA7; 62.05-1).</P>
+<CITA TYPE="N">[USCG-2003-16630, 73 FR 65189, Oct. 31, 2008]
+</CITA>
+</DIV8>
+
+<DIV8 N="62.35-40" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.35-40&quot;,&quot;citation&quot;:&quot;46 CFR 62.35-40&quot;}">
+<HEAD>&#xA7; 62.35-40 Fuel systems.</HEAD>
+<P>(a) <I>Level alarms.</I> Where high or low fuel tank level alarms are required, they must be located to allow the operator adequate time to prevent an unsafe condition.</P>
+<P>(b) <I>Coal fuels.</I> (1) Controls and instrumentation for coal systems require special consideration by the Commandant.</P>
+<P>(2) Interlocks must be provided to ensure a safe transfer of machinery operation from one fuel to another.</P>
+<P>(c) <I>Automatic fuel heating.</I> Automatic fuel heating must meet section 4-9-3/15.1 of the ABS Marine Vessel Rules (incorporated by reference; see &#xA7; 62.05-1).</P>
+<P>(d) <I>Overflow prevention.</I> Fuel oil day tanks, settlers, and similar fuel oil service tanks that are filled automatically or by remote control must be provided with a high-level alarm that annunciates in the machinery spaces and either an automatic safety trip control or an overflow arrangement.</P>
+<CITA TYPE="N">[CGD 81-030, 53 FR 17838, May 18, 1988, as amended by CGD 95-072, 60 FR 50463, Sept. 29, 1995; CGD 96-041, 61 FR 50728, Sept. 27, 1996; USCG-2003-16630, 73 FR 65190, Oct. 31, 2008; USCG-2009-0702, 74 FR 49229, Sept. 25, 2009]
+</CITA>
+</DIV8>
+
+<DIV8 N="62.35-50" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.35-50&quot;,&quot;citation&quot;:&quot;46 CFR 62.35-50&quot;}">
+<HEAD>&#xA7; 62.35-50 Tabulated monitoring and safety control requirements for specific systems.</HEAD>
+<P>The minimum instrumentation, alarms, and safety controls required for specific types of systems are listed in table 1 to &#xA7; 62.35-50. The ABS Marine Vessel Rules (incorporated by reference; see &#xA7; 62.05-2) required for engineering systems are also listed in table 1 to &#xA7; 62.35-50.</P>
+<P>(a) Safety limit controls must be provided in navigating bridge primary propulsion control systems. See &#xA7; 62.35-5(c).</P>
+<P>(b) Safety trip controls and alarms must be provided for all main boilers, regardless of mode of operation. See &#xA7; 62.35-20(a).</P>
+<P>(c) Loss of forced lubrication safety trip controls must be provided for main propulsion turbines and main propulsion diesel engines.</P>
+<P>(d) Override of overspeed and loss of forced lubrication pressure safety trip controls must not be provided for main propulsion or generator steam or gas turbines, or diesel engines. See &#xA7; 62.35-5(e)(2).</P>
+<P>(e) Transfer interlocks must be provided for main propulsion systems capable of remote and local control.</P>
+<P>(f) Semiconductor controlled rectifiers must have current limit controls.</P>
+<P>(g) Interlocks must be provided to prevent the starting of engines or turbines while the jacking or turning gear, if installed, is engaged. See &#xA7; 62.25-5(a).</P>
+<P>(h) Main and remote-control stations, including the navigational bridge, must provide visual and audible alarms in the event of a fire in the main machinery space.</P>
+<P>(i) Minimally attended and periodically unattended machinery plants must be provided with a personnel alarm that annunciates on the bridge if not acknowledged by the watch engineer. See &#xA7; 62.50-20(b)(1).</P>
+<P>(j) All automatic controls and alarms must be failsafe to the least critical consequence for the particular system. See &#xA7; 62.30-1.</P>
+<P>(k) The operating or tripped status of vital auxiliary boilers must be indicated at the ECC. See part 63 of this subchapter.</P>
+<DIV width="100%"><DIV class="gpotbl_div">
+<TABLE border="1" cellpadding="1" cellspacing="1" class="gpo_table" frame="void" width="100%">
+<CAPTION><P class="title">Table 1 to &#xA7; 62.35-50&#x2014;Minimum System Monitoring and Safety Control Requirements for Specific Systems</P></CAPTION>
+<THEAD>
+<TR>
+<TH class="center border-top-single border-bottom-single border-right-single">System</TH>
+<TH class="center border-top-single border-bottom-single border-right-single">Service</TH>
+<TH class="center border-top-single border-bottom-single border-right-single">Instrumentation</TH>
+<TH class="center border-top-single border-bottom-single border-right-single">Alarm</TH>
+<TH class="center border-top-single border-bottom-single border-right-single">Safety control</TH>
+<TH class="center border-top-single border-bottom-single">See also<br/>paragraph</TH>
+</TR>
+</THEAD>
+<TBODY>
+<TR>
+<TD class="left border-right-single">Main (Propulsion) boiler</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6 tables 1A, 1B and 5A</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6 tables 1A, 1B and 5A</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6 tables 1A, 1B and 5A</TD>
+<TD class="left border-right-single"/>
+<TD class="left">(a)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">Burner seating</TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">Failure</TD>
+<TD class="left border-right-single">Burner auto trip</TD>
+<TD class="left">(b)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">Trial for ignition</TD>
+<TD class="left border-right-single">Status</TD>
+<TD class="left border-right-single">Failure</TD>
+<TD class="left border-right-single">Burner auto trip</TD>
+<TD class="left">(b)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">Manual trip</TD>
+<TD class="left">(b)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">Low fire interlock</TD>
+<TD class="left border-right-single">Status</TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">Program control interlock</TD>
+<TD class="left border-right-single">Status</TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single">Main (Propulsion steam) turbine</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6 table 2</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6 table 2</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6 table 2</TD>
+<TD class="left border-right-single">Manual trip</TD>
+<TD class="left">(c), (d)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Main propulsion, diesel</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6 tables 1A, 1B and 5A</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6 tables 1A, 1B and 5A</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6 tables 1A, 1B and 5A</TD>
+<TD class="left border-right-single">Manual trip</TD>
+<TD class="left">(c), (d)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Main propulsion, remote control</TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">Failure</TD>
+<TD class="left border-right-single">Manual trip</TD>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">Auto safety trip override</TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">Activated</TD>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">Starting power</TD>
+<TD class="left border-right-single">Pressure (voltage)</TD>
+<TD class="left border-right-single">Low</TD>
+<TD class="left border-right-single">Limit</TD>
+<TD class="left">(a)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">Location in control</TD>
+<TD class="left border-right-single">Status</TD>
+<TD class="left border-right-single">Override</TD>
+<TD class="left border-right-single"/>
+<TD class="left">(c)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">Shaft speed/direction/pitch</TD>
+<TD class="left border-right-single">See &#xA7; 113.37 of this chapter.</TD>
+<TD class="left border-right-single">See &#xA7; 113.37 of this chapter.</TD>
+<TD class="left border-right-single">See &#xA7; 113.37 of this chapter.</TD>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">Clutch fluid</TD>
+<TD class="left border-right-single">Pressure</TD>
+<TD class="left border-right-single">Low</TD>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single">Main propulsion, electric <sup>(1)</sup></TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6, tables 4A and 4B</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6, tables 4A and 4B</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6, tables 4A and 4B</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6, tables 4A and 4B</TD>
+<TD class="left">(f)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Main propulsion, shafting</TD>
+<TD class="left border-right-single">Stern tube oil tank level</TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">Low</TD>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">Line shaft bearing</TD>
+<TD class="left border-right-single">Temperature</TD>
+<TD class="left border-right-single">High</TD>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">Forced lubrication Pressure</TD>
+<TD class="left border-right-single">Low</TD>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single">Main propulsion, controllable pitch propeller</TD>
+<TD class="left border-right-single">Hydraulic oil</TD>
+<TD class="left border-right-single">Pressure</TD>
+<TD class="left border-right-single">High, Low</TD>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">Temperature</TD>
+<TD class="left border-right-single">High</TD>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single">Generators</TD>
+<TD class="left border-right-single">Ship service</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6, table 6</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6, table 6</TD>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">Starting pressure/voltage</TD>
+<TD class="left border-right-single">Low</TD>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">Tripped</TD>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">Emergency <sup>2</sup></TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">Turbogenerator</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6, table 6</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6, table 6</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6, table 6</TD>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">Manual trip</TD>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">Diesel</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6, table 6</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6, table 6</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6, table 6</TD>
+<TD class="left">(d)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">Manual trip</TD>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single">Auxiliary boiler</TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">Run</TD>
+<TD class="left border-right-single">Trip</TD>
+<TD class="left border-right-single"/>
+<TD class="left">(k)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Gas turbine <sup>3</sup></TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6, Tables 3 and 6</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6, Tables 3 and 6</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6, Tables 3 and 6</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6, Tables 3 and 6</TD>
+<TD class="left">(d)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Engines and turbines</TD>
+<TD class="left border-right-single">Jacking/turning gear</TD>
+<TD class="left border-right-single">Engaged</TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single"/>
+<TD class="left">(g)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Fuel oil</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6, tables 5A and 6</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6, tables 5A and 6</TD>
+<TD class="left border-right-single">ABS Marine Vessel Rules Part 4-9-6, tables 5A and 6</TD>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">Remote/auto fill level</TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">High</TD>
+<TD class="left border-right-single">Auto trip or overflow arrangement</TD>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">Hi. press. leakage level</TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">High</TD>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single">Bilge</TD>
+<TD class="left border-right-single">Pump remote control</TD>
+<TD class="left border-right-single">Run</TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">Pump auto control</TD>
+<TD class="left border-right-single">Run</TD>
+<TD class="left border-right-single">Excessive operations</TD>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">Level</TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">High/location</TD>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single">Machinery space Class 3 (power-operated) watertight doors</TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">Open/closed</TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single">Fire detection</TD>
+<TD class="left border-right-single">Machinery spaces</TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">Space on fire</TD>
+<TD class="left border-right-single"/>
+<TD class="left">(h)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Fire main</TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">Pressure</TD>
+<TD class="left border-right-single">Low</TD>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single">Personnel</TD>
+<TD class="left border-right-single">Deadman</TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">Fail to acknowledge</TD>
+<TD class="left border-right-single"/>
+<TD class="left">(i)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">General, control and alarm systems</TD>
+<TD class="left border-right-single">Power supply</TD>
+<TD class="left border-right-single">Available (pressure)</TD>
+<TD class="left border-right-single">Failure (low)</TD>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">System function</TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">Failure</TD>
+<TD class="left border-right-single"/>
+<TD class="left">(j)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">Console air conditioning</TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">Failure</TD>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">Built in test equipment</TD>
+<TD class="left border-right-single">Active</TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">Sequential interlock</TD>
+<TD class="left border-right-single">Activated</TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single"/>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">Safety control</TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">Activated</TD>
+<TD class="left border-right-single">Auto trip/limit</TD>
+<TD class="left">(j)</TD>
+</TR>
+<TR>
+<TD class="left border-bottom-single border-right-single">Redundant auxiliary, system, power supply</TD>
+<TD class="left border-bottom-single border-right-single"/>
+<TD class="left border-bottom-single border-right-single">Status</TD>
+<TD class="left border-bottom-single border-right-single">Auto transfer
+</TD>
+<TD class="left border-bottom-single border-right-single"/>
+<TD class="left border-bottom-single"/>
+</TR>
+</TBODY>
+<TFOOT><TR><TD colspan="6"><sup>1</sup> See subparts 111.33 and 111.35 of this chapter.
+</TD></TR><TR><TD colspan="6"><sup>2</sup> See subparts 112.45 and 112.50 of this chapter.
+</TD></TR><TR><TD colspan="6"><sup>3</sup> See &#xA7; 58.10-15(f) of this subchapter.</TD></TR></TFOOT></TABLE>
+</DIV></DIV>
+<CITA TYPE="N">[CGD 81-030, 53 FR 17838, May 18, 1988; 53 FR 19090, May 26, 1988, as amended by USCG-2000-7790, 65 FR 58461, Sept. 29, 2000; USCG-2003-16630, 73 FR 65190, Oct. 31, 2008]
+</CITA>
+</DIV8>
+
+</DIV6>
+<DIV6 N="62.50" TYPE="SUBPART" VOLUME="2" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-46/part-62/subpart-62.50&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;46 CFR Part 62 Subpart 62.50&amp;quot;}">
+<HEAD>Subpart 62.50&#x2014;Automated Self-propelled Vessel Manning</HEAD>
+<DIV8 N="62.50-1" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.50-1&quot;,&quot;citation&quot;:&quot;46 CFR 62.50-1&quot;}">
+<HEAD>&#xA7; 62.50-1 General.</HEAD>
+<P>(a) Where automated systems are provided to replace specific personnel in the control and observation of the engineering plant and spaces, or reduce overall crew requirements, the arrangements must make sure that under all sailing conditions, including maneuvering, the safety of the vessel is equal to that of the same vessel with the entire plant under fully attended direct manual supervision.</P>
+<P>(b) Coast Guard acceptance of automated systems to replace specific personnel or to reduce overall crew requirements is predicated upon&#x2014;</P>
+<P>(1) The capabilities of the automated systems;</P>
+<P>(2) The combination of the personnel, equipment, and systems necessary to ensure the safety of the vessel, personnel, and environment in all sailing conditions, including maneuvering;</P>
+<P>(3) The ability of the crew to perform all operational evolutions, including emergencies such as fire or control or monitoring system failure;</P>
+<P>(4) A planned maintenance program including routine maintenance, inspection, and testing to ensure the continued safe operation of the vessel; and</P>
+<P>(5) The automated system's demonstrated reliability during an initial trial period, and its continuing reliability.</P>
+<NOTE>
+<HED>Note 1 to paragraph (<E T="01">b</E>)(5):</HED>
+<P>The cognizant Officer in Charge, Marine Inspection, (OCMI) also determines the need for more or less equipment depending on the vessel characteristics, route, or trade.</P></NOTE>
+<P>(c) Equipment provided to replace specific personnel or to reduce overall crew requirements that proves unsafe or unreliable in the judgment of the cognizant Officer in Charge, Marine Inspection, must be replaced or repaired or vessel manning will be modified to compensate for the equipment inadequacy.</P>
+<CITA TYPE="N">[CGD 81-030, 53 FR 17838, May 18, 1988, as amended by USCG-2020-0634, 89 FR 50195, June 12, 2024]
+</CITA>
+</DIV8>
+
+<DIV8 N="62.50-20" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.50-20&quot;,&quot;citation&quot;:&quot;46 CFR 62.50-20&quot;}">
+<HEAD>&#xA7; 62.50-20 Additional requirements for minimally attended machinery plants.</HEAD>
+<NOTE>
+<HED>Note 1 to &#xA7; 62.50-20:</HED>
+<P>Minimally attended machinery plants include vessel machinery plants and spaces that are automated, but not to a degree where the plant could be left unattended. Emphasis is placed on the centralized remote control and monitoring of the machinery plant and machinery spaces.</P></NOTE>
+<P>(a) <I>General.</I> (1) Navigating bridge propulsion control must be provided.</P>
+<P>(2) An ECC must be provided and must include the automatic and remote control and monitoring systems necessary to limit the operator's activity to monitoring the plant, initiating programmed control system sequences, and taking appropriate action in an emergency.</P>
+<P>(3) The ECC must include control and monitoring of all vital engineering systems, including&#x2014;</P>
+<P>(i) The propulsion plant and its auxiliaries;</P>
+<P>(ii) Electrical power generation and distribution;</P>
+<P>(iii) Machinery space fire detection, alarm, and extinguishing systems; and</P>
+<P>(iv) Machinery space flooding safety systems, except the valves described in paragraph (e)(4) of this section.</P>
+<P>(4) ECC control of vital systems must include the ability to place required standby systems, auxiliaries, and power sources in operation, unless automatic transfer is provided, and to shut down such equipment when necessary.</P>
+<NOTE>
+<HED>Note 2 to paragraph (<E T="01">a</E>)(4):</HED>
+<P>ECC remote control need not include means for a single operator to bring the plant to standby from a cold plant or dead ship condition or controls for non-vital systems or equipment.</P></NOTE>
+<P>(b) <I>Alarms and instrumentation.</I> (1) A personnel alarm must be provided and must annunciate on the bridge if not routinely acknowledged at the ECC or in the machinery spaces.</P>
+<P>(2) Continuous or demand instrumentation displays must be provided at the ECC to meet the system and equipment monitoring requirements of this part if the ECC is to be continuously attended. If the watchstander's normal activities include maintenance, a roving watch, or similar activities in the machinery spaces but not at the ECC, both alarms and instrumentation must be provided.</P>
+<P>(3) All required audible alarms must annunciate throughout the ECC and machinery spaces.</P>
+<P>(c) <I>Fire detection and alarms.</I> An approved automatic fire detection and alarm system must be provided to monitor all machinery spaces. The system must activate all alarms at the ECC, the navigating bridge, and throughout the machinery spaces and engineers' accommodations. The ECC and bridge alarms must visually indicate which machinery space is on fire, as applicable.</P>
+<P>(d) <I>Fire pumps.</I> (1) The ECC must include control of the main machinery space fire pumps.</P>
+<P>(2) Remote control of a required fire pump must be provided from the navigating bridge. Where one or more fire pumps is required to be independent of the main machinery space, at least one such pump must be controlled from the navigating bridge.</P>
+<P>(e) <I>Flooding safety.</I> (1) Machinery space bilges, bilge wells, shaft alley bilges, and other minimally attended locations where liquids might accumulate must be monitored from the ECC to detect flooding angles from vertical of up to 15&#xB0; heel and 5&#xB0; trim.</P>
+<P>(2) The ECC must include the controls necessary to bring at least one independent bilge pump and independent bilge suction required by &#xA7; 56.50-50(e) of this subchapter into operation to counter flooding.</P>
+<P>(3) Where watertight doors in subdivision bulkheads are required in the machinery spaces, they must be Class 3 watertight doors and must be controllable from the ECC and the required navigating bridge control location.</P>
+<P>(4) Controls must be provided to operate the sea inlet and discharge valves required by &#xA7; 56.50-95(d) of this subchapter and the emergency bilge suction required by &#xA7; 56.50-50(f) of this subchapter. These controls must be arranged to allow time for operation in the event of flooding with the vessel in the fully loaded condition. Time considerations must include detection, crew response, and control operation time.</P>
+<P>(f) <I>Communications.</I> (1) A means must be provided at the ECC to selectively summon any engineering department member from the engineering accommodations to the ECC.</P>
+<P>(2) The voice communications system required by &#xA7; 113.30-5(a) of this chapter must also include the engineering officers' accommodations.</P>
+<P>(g) <I>Electrical systems.</I> (1) The ECC must include the controls and instrumentation necessary to place the ship service and propulsion generators in service in 30 seconds.</P>
+<P>(2) The main distribution and propulsion switchboards and generator controls must either be located at the ECC, if the ECC is within the boundaries of the main machinery space, or the controls and instrumentation required by part 111 of this chapter must be duplicated at the ECC. Controls at the switchboard must be able to override those at the ECC, if separate. Also see &#xA7;&#xA7; 111.12-11(g) and 111.30-1 of this chapter regarding switchboard location.</P>
+<P>(h) <I>Maintenance program.</I> (1) The vessel must have a planned maintenance program to ensure continued safe operation of all vital systems. Program content and detail is optional, but must include maintenance and repair manuals for work to be accomplished by maintenance personnel and checkoff lists for routine inspection and maintenance procedures.</P>
+<P>(2) The planned maintenance program must be functioning prior to the completion of the evaluation period for reduced manning required by &#xA7; 62.50-1(b)(5).</P>
+<P>(3) Maintenance and repair manuals must include details as to what, when, and how to troubleshoot, repair and test the installed equipment and what parts are necessary to accomplish the procedures. Schematic and logic diagrams required by &#xA7; 62.20-1 of this part must be included in this documentation.</P>
+<CITA TYPE="N">[CGD 81-030, 53 FR 17838, May 18, 1988; 53 FR 19090, May 26, 1988; 53 FR 24270, June 28, 1988; USCG-2004-18884, 69 FR 58346, Sept. 30, 2004; USCG-2014-0688, 79 FR 58281, Sept. 29, 2014; USCG-2020-0634, 89 FR 50195, June 12, 2024]
+</CITA>
+</DIV8>
+
+<DIV8 N="62.50-30" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-46/section-62.50-30&quot;,&quot;citation&quot;:&quot;46 CFR 62.50-30&quot;}">
+<HEAD>&#xA7; 62.50-30 Additional requirements for periodically unattended machinery plants.</HEAD>
+<NOTE>
+<HED>Note 1 to &#xA7; 62.50-30:</HED>
+<P>Periodically unattended machinery plants include machinery plants and spaces that are automated to the degree that they are self-regulating and self-monitoring and could safely be left periodically unattended. Emphasis is placed on providing systems that act automatically until the crew can take action in the event of a failure or emergency. Requirements are in addition to those of a minimally attended machinery plant.</P></NOTE>
+<P>(a) <I>General.</I> The requirements of this section must be met in addition to those of &#xA7; 62.50-20.</P>
+<P>(b) <I>Automatic transfer.</I> Redundant vital auxiliaries and power sources must automatically transfer to the backup units upon failure of operating units.</P>
+<P>(c) <I>Fuel systems.</I> Each system for the service or treatment of fuel must meet section 4-6-4/13.5 of the ABS Marine Vessel Rules (incorporated by reference; see &#xA7; 62.05-1).</P>
+<P>(d) <I>Starting systems.</I> Automatic or remote starting system receivers, accumulators, and batteries must be automatically charged.</P>
+<P>(e) <I>Assistance-needed alarm.</I> The engineer's assistance-needed alarm (see subpart 113.27 of this chapter) must annunciate if&#x2014;</P>
+<P>(1) An alarm at the ECC is not acknowledged in the period of time necessary for an engineer to respond at the ECC from the machinery spaces or engineers' accommodations; or</P>
+<P>(2) An ECC alarm system normal power supply fails.</P>
+<P>(f) <I>Remote alarms.</I> ECC alarms for vital systems that require the immediate attention of the bridge watch officer for the safe navigation of the vessel must be extended to the bridge. All ECC alarms required by this part must be extended to the engineers' accommodations. Other than fire or flooding alarms, this may be accomplished by summarized visual alarm displays.</P>
+<P>(g) <I>ECC alarms.</I> All requirements of this part for system or equipment monitoring must be met by providing both displays and alarms at the ECC.</P>
+<P>(h) <I>Fire control station.</I> A control station for fire protection of the machinery spaces must be provided outside the machinery spaces. At least one access to this station must be independent of category A machinery spaces, and any boundary shared with these spaces must have an A-60 fire classification as defined in subpart 72.05 of this chapter. The number of control and monitoring cables and piping for the station that adjoin or penetrate the boundaries of a category A machinery space, uptakes, or casings must be minimized. The fire control station must include&#x2014;</P>
+<P>(1) Annunciation of which machinery space is on fire;</P>
+<P>(2) Control of a fire pump required by this chapter to be independent of the main machinery spaces;</P>
+<P>(3) Controls for machinery space fixed gas fire extinguishing systems;</P>
+<P>(4) Control of oil piping positive shutoff valves located in the machinery spaces and required by &#xA7; 56.50-60(d) of this subchapter;</P>
+<P>(5) Controls for machinery space fire door holding and release systems, skylights and similar openings;</P>
+<P>(6) The remote stopping systems for the machinery listed in &#xA7; 111.103 of this chapter; and</P>
+<P>(7) Voice communications with the bridge.</P>
+<P>(i) <I>Oil leakage.</I> Leakages from high-pressure fuel oil pipes must be collected and high levels must be alarmed at the ECC.</P>
+<P>(j) <I>Maintenance program.</I> The maintenance program of &#xA7; 62.50-20(h) must include a checkoff list to make sure that routine daily maintenance has been performed, fire and flooding hazards have been minimized, and plant status is suitable for unattended operation. Completion of this checkoff list must be logged before leaving the plant unattended.</P>
+<P>(k) <I>Continuity of electrical power.</I> The electrical plant must meet sections 4-8-2/3.11 and 4.8.2/9.9 of the ABS Marine Vessel Rules, and must:</P>
+<P>(1) Not use the emergency generator for this purpose;</P>
+<P>(2) Restore power in not more than 30 seconds; and</P>
+<P>(3) Account for loads permitted by &#xA7; 111.70-3(g) of this chapter to automatically restart.</P>
+<CITA TYPE="N">[CGD 81-030, 53 FR 17838, May 18, 1988; 53 FR 19090, May 26, 1988, as amended by USCG-2003-16630, 73 FR 65190, Oct. 31, 2008; USCG-2020-0634, 89 FR 50196, June 12, 2024; USCG-2024-1103, 90 FR 52880, Nov. 24, 2025]
+</CITA>
+</DIV8>
+
+</DIV6>
+</DIV5>

@@ -1,0 +1,49 @@
+# 검색 평가 질문. gold는 조각 id가 아니라 "위치"로 적는다 — 자르는 방식을 바꿔도 정답표를 다시 쓰지 않게.
+# 표처럼 한 위치에 조각이 여러 개면 {loc, contains}로 어느 행이어야 하는지까지 적는다.
+# lang: 질문 언어 → 정답 문서 언어 (ko→ko 매뉴얼, ko→en CFR, en→en)
+
+- q: 한 실린더만 배기가스 온도가 다른 실린더보다 높을 때 원인과 점검 순서는?
+  gold: [매뉴얼 3.2]
+  lang: ko→ko
+- q: 모든 실린더의 배기가스 온도가 함께 올라가면 무엇을 의심해야 하나?
+  gold: [매뉴얼 3.3]
+  lang: ko→ko
+- q: 주기관 윤활유 입구 압력이 떨어지면 무엇부터 확인하나?
+  gold: [매뉴얼 4.2]
+  lang: ko→ko
+- q: 윤활유 필터가 막혔을 때 대기 쪽 필터로 전환하는 방법
+  gold: [매뉴얼 4.3]
+  lang: ko→ko
+- q: ME_LO_PRESS_IN 경보 설정값은?
+  gold: [{loc: 매뉴얼 2.1, contains: ME_LO_PRESS_IN}]
+  lang: ko→ko(태그)
+- q: 냉각수 출구 온도가 1분 만에 140도로 뛰었다. 센서 고장인지 어떻게 판단하나?
+  gold: [매뉴얼 5.3]
+  lang: ko→ko
+- q: 재킷 냉각수 출구 온도가 높을 때 원인 찾는 순서
+  gold: [매뉴얼 5.2]
+  lang: ko→ko
+- q: AMS 화면 값과 현장 계기 값이 다르면 어느 쪽을 기준으로 해야 하나?
+  gold: [매뉴얼 7.3]
+  lang: ko→ko
+- q: 윤활유 저압 트립을 우회하고 운전을 계속해도 되나?
+  gold: [매뉴얼 4.4, §62.35-50(d)]
+  lang: ko→ko+en
+- q: 주기관 디젤 기관에 윤활 압력 상실 안전 트립이 반드시 있어야 하나?
+  gold: [§62.35-50(c)]
+  lang: ko→en
+- q: 자동 제어 장치와 알람 시스템은 고장 났을 때 어떤 쪽으로 동작하도록 만들어야 하나?
+  gold: [§62.30-1]
+  lang: ko→en
+- q: 원격으로 계측하는 계통도 장비 쪽에 계기를 달 수 있게 해 두어야 하나?
+  gold: [§62.25-20(b)(2)]
+  lang: ko→en
+- q: 안전 장치가 자동으로 동작하면 그 사실을 어디에 알려야 하나?
+  gold: [§62.25-15(c)]
+  lang: ko→en
+- q: 추진 안전 트립의 바람직한 failsafe 상태는 무엇인가?
+  gold: [{loc: §62.10-1 표 1, contains: Propulsion safety trip}]
+  lang: ko→en(표)
+- q: Can the overspeed safety trip on a main propulsion diesel engine be overridden?
+  gold: [§62.35-50(d)]
+  lang: en→en
