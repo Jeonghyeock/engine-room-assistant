@@ -53,13 +53,16 @@ def _check_value(tag: dict, value, where: str) -> None:
             raise ValueError(f"{where}: {tag['tag']} 상태는 {tag['states']} 중 하나여야 한다 — {value!r}")
         return
     lo, hi = tag["measure"]
-    if not isinstance(value, (int, float)) or not lo <= value <= hi:
+    # bool은 int의 하위 타입이라 따로 막는다(True가 1로 통과하지 않게).
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not lo <= value <= hi:
         raise ValueError(f"{where}: {tag['tag']} 값은 측정 범위 {lo}~{hi} 안의 숫자여야 한다 — {value!r}")
 
 
 def build(spec: dict, baseline: dict, tags: dict[str, dict]) -> Scenario:
     sid = spec["id"]
     n = spec["minutes"]
+    if isinstance(n, bool) or not isinstance(n, int) or n < 1:
+        raise ValueError(f"{sid}: minutes는 1 이상의 정수여야 한다 — {n!r}")
     base = {**baseline, **spec.get("baseline", {})}
     if set(base) != set(tags):
         raise ValueError(f"{sid}: 평상시 값의 태그가 tags.yaml과 다르다 — 빠짐 {sorted(set(tags) - set(base))}, 모름 {sorted(set(base) - set(tags))}")
@@ -74,6 +77,8 @@ def build(spec: dict, baseline: dict, tags: dict[str, dict]) -> Scenario:
             raise ValueError(f"{sid}: 모르는 태그 {name}")
         _check_value(tags[name], ch["value"], f"{sid} 바뀜")
         row = values[name]
+        if ("at" in ch) == ("from" in ch or "to" in ch):
+            raise ValueError(f"{sid}: {name} 바뀜은 계단(at) 또는 경사(from·to) 중 하나로만 적는다")
         if "at" in ch:
             if not 0 <= ch["at"] <= n:
                 raise ValueError(f"{sid}: {name} 계단 시점 {ch['at']}분이 0~{n} 밖이다")
@@ -81,12 +86,16 @@ def build(spec: dict, baseline: dict, tags: dict[str, dict]) -> Scenario:
                 row[m] = ch["value"]
                 stuck[name][m] = True
         else:
-            a, b = ch["from"], ch["to"]
-            if not 0 <= a < b <= n:
+            if "states" in tags[name]:
+                raise ValueError(f"{sid}: 상태 태그 {name}는 경사로 바꿀 수 없다 — 계단(at)으로 적는다")
+            a, b = ch.get("from"), ch.get("to")
+            if not (isinstance(a, int) and isinstance(b, int) and 0 <= a < b <= n):
                 raise ValueError(f"{sid}: {name} 경사 구간 {a}~{b}분이 잘못됐다")
             start = row[a]
             for m in range(a, n + 1):
                 row[m] = ch["value"] if m >= b else start + (ch["value"] - start) * (m - a) / (b - a)
+                if m > a:
+                    stuck[name][m] = False  # 계단 뒤에 경사가 오면 경사가 시작된 다음 분부터 다시 움직인다
 
     series: dict[str, list] = {}
     for name, row in values.items():
@@ -100,7 +109,7 @@ def build(spec: dict, baseline: dict, tags: dict[str, dict]) -> Scenario:
         for m, v in enumerate(row):
             if not stuck[name][m]:
                 v += v * NOISE * rng.uniform(-1, 1)
-            out.append(round(min(max(v, lo), hi), DECIMALS.get(tag["unit"], 2)))
+            out.append(round(float(min(max(v, lo), hi)), DECIMALS.get(tag["unit"], 2)))
         series[name] = out
 
     return Scenario(sid, spec["title"], spec["summary"], datetime.fromisoformat(spec["now"]), n, series)
