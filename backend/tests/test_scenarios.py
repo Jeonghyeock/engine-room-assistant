@@ -29,6 +29,8 @@ def test_all_scenarios_load_with_full_series():
 
 def test_series_are_deterministic():
     assert load("S2").series == load("S2").series
+    # 실행이 바뀌어도 같은 값 — 흔들림이 들어간 값 하나를 고정해 둔다
+    assert load("S1").series["ME_EXH_TEMP_CYL3"][-1] == 462.6
 
 
 def test_baseline_is_normal_everywhere():
@@ -40,8 +42,12 @@ def test_baseline_is_normal_everywhere():
 def test_s1_only_cylinder3_runs_hot():
     s = load("S1")
     assert now(s, "ME_EXH_TEMP_CYL3") >= TAGS["ME_EXH_TEMP_CYL3"]["limits"]["alarm_high"]
-    for n in (1, 2, 4, 5, 6):
+    others = [1, 2, 4, 5, 6]
+    for n in others:
         assert all(normal(f"ME_EXH_TEMP_CYL{n}", v) for v in s.series[f"ME_EXH_TEMP_CYL{n}"])
+    # 매뉴얼 3.2: 나머지 평균보다 50 °C 이상 높으면 그 실린더의 연소 문제
+    avg = sum(now(s, f"ME_EXH_TEMP_CYL{n}") for n in others) / len(others)
+    assert now(s, "ME_EXH_TEMP_CYL3") - avg >= 50
     # 갑자기 뛴 것이 아니라 꾸준히 올랐다
     row = s.series["ME_EXH_TEMP_CYL3"]
     assert max(b - a for a, b in zip(row, row[1:])) < 10
@@ -59,8 +65,11 @@ def test_s2_filter_clogs_and_pressure_drops_but_not_to_slowdown():
 def test_s3_outlet_temp_jumps_and_sticks_while_neighbours_stay():
     s = load("S3")
     row = s.series["ME_JCW_TEMP_OUT"]
+    before = row[:28]  # 0~27분, 28분에 뛰기 전까지
+    assert max(abs(b - a) for a, b in zip(before, before[1:])) < 2  # 매뉴얼 5.3: 정상이면 1분에 2 °C 안쪽
     assert max(b - a for a, b in zip(row, row[1:])) > 10  # 매뉴얼 5.3: 1분에 10 °C 넘게
-    assert row[-3:] == [149.9, 149.9, 149.9]  # 고착 — 흔들리지 않는다
+    assert row[-3:] == [150.0, 150.0, 150.0]  # 측정 범위 끝에 고착 — 흔들리지 않는다
+    assert row[-1] == TAGS["ME_JCW_TEMP_OUT"]["measure"][1]
     for tag in ("ME_JCW_TEMP_IN", "ME_JCW_PRESS_IN", "ME_LO_TEMP_IN"):
         assert all(normal(tag, v) for v in s.series[tag]), tag
     assert now(s, "ME_RPM") < s.series["ME_RPM"][27]  # 감속으로 회전수가 내려간다
@@ -89,3 +98,28 @@ def test_baseline_must_cover_every_tag():
     partial = {k: v for k, v in BASELINE.items() if k != "GE2_LOAD"}
     with pytest.raises(ValueError, match="GE2_LOAD"):
         build(_spec(), partial, TAGS)
+
+
+def test_ramp_after_step_moves_again_with_noise():
+    spec = _spec(changes=[{"tag": "ME_JCW_TEMP_OUT", "at": 2, "value": 100}, {"tag": "ME_JCW_TEMP_OUT", "from": 5, "to": 10, "value": 120}])
+    row = build(spec, BASELINE, TAGS).series["ME_JCW_TEMP_OUT"]
+    assert row[2:6] == [100.0] * 4  # 계단으로 고정된 구간
+    ramp = row[6:10]
+    assert ramp != [104.0, 108.0, 112.0, 116.0]  # 경사 구간은 다시 흔들린다
+    assert all(abs(v - e) < 1 for v, e in zip(ramp, [104, 108, 112, 116]))
+
+
+@pytest.mark.parametrize(
+    "over, msg",
+    [
+        ({"minutes": 0}, "1 이상의 정수"),
+        ({"minutes": 30.0}, "1 이상의 정수"),
+        ({"changes": [{"tag": "ME_RPM", "at": 1, "value": True}]}, "측정 범위"),
+        ({"changes": [{"tag": "LO_PUMP1_STATE", "from": 1, "to": 3, "value": "정지"}]}, "상태 태그"),
+        ({"changes": [{"tag": "ME_RPM", "value": 80}]}, "하나로만"),
+        ({"changes": [{"tag": "ME_RPM", "at": 1, "from": 1, "to": 3, "value": 80}]}, "하나로만"),
+    ],
+)
+def test_malformed_specs_fail_with_clear_errors(over, msg):
+    with pytest.raises(ValueError, match=msg):
+        build(_spec(**over), BASELINE, TAGS)
