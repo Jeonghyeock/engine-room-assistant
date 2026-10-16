@@ -11,7 +11,7 @@
 | 단계 | 내용 | 상태 |
 |---|---|---|
 | 1 | 가상 매뉴얼, 문서 수집·검색, 검색 평가 | 완료 |
-| 2 | MCP 서버(가상 알람 감시 시스템, 문서 검색) | - |
+| 2 | MCP 서버(가상 알람 감시 시스템, 문서 검색), 시나리오 3개 | 완료 |
 | 3 | 에이전트 루프 | - |
 | 4 | SSE API와 화면 | - |
 | 5 | 로컬 서빙 측정 | - |
@@ -44,6 +44,39 @@ eCFR API ─► 46 CFR Part 62 XML ─► 조·문단 단위 조각, 표는 행 
 - LanceDB 전문 검색(FTS)은 Windows에서도 동작한다. 다만 태그 이름 질문(`ME_LO_PRESS_IN 경보 설정값은?`)도 벡터 검색만으로 정확한 행이 1위라 섞지 않았다.
 - 문항별 결과: [backend/evals/results/](backend/evals/results/)
 
+## 2단계 — MCP 서버
+
+```
+data/tags.yaml ─┐
+data/scenarios/ ─┴─► ams.system(알람 판정·센서·추세) ─► MCP 서버 ① ams   list_active_alarms · list_tags · read_sensors · get_trend
+data/index/ ──────► rag.store(검색) ──────────────────► MCP 서버 ② docs  search_docs
+```
+
+- **모든 도구가 읽기 전용**(`readOnlyHint`)이다. 시나리오는 서버를 띄울 때(`--scenario`)만 정해서, 모델이 부를 수 있는 도구 중 상태를 바꾸는 것은 하나도 없다.
+- **오류는 모델이 읽고 고칠 수 있게.** 모르는 태그는 "비슷한 태그: ME_LO_PRESS_IN …", 모르는 계통은 유효한 코드를 담아 `ToolError`로 돌려준다. 색인 없음·손상, Ollama 연결 실패·모델 없음(404)도 각각 다른 말로 알린다.
+- **결과는 모두 객체 하나**(`{"alarms": …}`, `{"results": …}`)라, 에이전트가 두 서버를 같은 방식으로 읽는다.
+
+### 시나리오 (지난 30분, 현재 = 마지막 분)
+
+| | 상황 | 현재 알람 | 에이전트가 지켜야 할 것 |
+|---|---|---|---|
+| S1 | 3번 실린더 배기 온도만 꾸준히 상승 | 3번 경보(≥ 450 °C, 3분 전) | 매뉴얼 근거로 권고 |
+| S2 | 필터 막힘 → 윤활유 입구 압력 하강 | 필터 차압 경보(6분 전) → 압력 경보(3분 전) | 트립 우회를 권하지 않음 |
+| S3 | 냉각수 출구 온도가 1분 새 150 °C(측정 범위 끝)로 뛰어 고착 | 감속·경보(2분 전) | 센서 고장 가능성과 현장 확인 |
+
+평상시 값은 `data/scenarios/baseline.json` 한 곳에, 시나리오에는 바뀌는 부분만 적는다. 값의 흔들림은 씨앗이 정해져 있어 매번 같다.
+
+### 작은 모델(qwen3:8b)로 확인해 바꾼 것
+
+| 처음 | 모델이 한 일 | 바꾼 것 |
+|---|---|---|
+| 계통 인자 설명 "ME 주기관, LO 윤활유 …" | 문구 그대로 `system="ME 주기관"`을 넣어 3번 연속 실패 | 코드부터 적음 → 3질문×3회 모두 첫 호출에 `ME`·`LO`·`JCW` |
+| 검색 조각 수 `k`를 인자로 | 매뉴얼 질문에 `k=1`을 골라 근거를 스스로 좁힘 | 서버가 5로 정함 |
+| 검색 설명 "규정은 영어로 물으면 더 잘 찾는다" | 규정 질문도 한국어로 질의 | **아직 못 풂** — 3단계에서 시스템 프롬프트 지시와 서버 쪽 영어 질의를 평가로 비교 |
+| 펌프 상태에 `status: "정지"` | (리뷰에서 지적) 알람 등급 "정지"와 같은 글자 | 상태 태그는 값만 |
+
+PR마다 맥락 없이 따로 돌린 리뷰를 받고, 지적별 반영/유지를 PR 댓글 표로 남겼다([#1](https://github.com/Jeonghyeock/engine-room-assistant/pull/1)~[#5](https://github.com/Jeonghyeock/engine-room-assistant/pull/5)).
+
 ## 실행
 
 필요: Python 3.12, [uv](https://docs.astral.sh/uv/), [Ollama](https://ollama.com), Edge 또는 Chrome(매뉴얼 PDF 인쇄).
@@ -51,13 +84,19 @@ eCFR API ─► 46 CFR Part 62 XML ─► 조·문단 단위 조각, 표는 행 
 ```sh
 ollama pull bge-m3            # 임베딩 (3단계부터 qwen3:8b도)
 cd backend
-uv sync --group ingest        # Docling은 수집에만 쓴다(torch 포함이라 무겁다)
+uv sync --group ingest        # Docling은 수집에만 쓴다(torch 포함이라 무겁다). 색인이 이미 있으면 uv sync만
 
 uv run python -m ingest.build_manual   # tags.yaml + manual.md → data/sources/manual.pdf
 uv run python -m ingest.cfr fetch      # eCFR API → data/sources/cfr-46-part62.xml (받은 날 기준 최신)
 uv run python -m ingest.build_index    # 조각 → 임베딩 → data/index/
 uv run python -m evals.retrieval       # 검색 평가 → evals/results/
-uv run pytest                          # Ollama 없이 도는 테스트
+uv run pytest                          # 색인·Ollama가 없으면 실제 검색 테스트 1개만 건너뜀
+
+# MCP 서버 (stdio)
+uv run python -m mcp_servers.ams_server --scenario S2
+uv run python -m mcp_servers.docs_server
+# MCP Inspector로 열어 보기
+npx @modelcontextprotocol/inspector uv run python -m mcp_servers.ams_server --scenario S2
 ```
 
 원문 `data/sources/`(CFR XML 2026-10-14 기준, 매뉴얼 PDF)은 레포에 들어 있어 `fetch`·`build_manual` 없이도 색인을 만들 수 있다.
