@@ -1,6 +1,5 @@
 """LanceDB 색인 — 서버 없이 data/index/ 폴더의 파일로 동작한다."""
 
-from functools import lru_cache
 from pathlib import Path
 
 import lancedb
@@ -13,24 +12,27 @@ TABLE = "chunks"
 SOURCES = {"cfr", "manual"}
 
 
-class IndexMissingError(RuntimeError):
-    """색인을 아직 만들지 않았다."""
+class IndexUnavailableError(RuntimeError):
+    """색인이 없거나 손상돼 검색할 수 없다."""
 
 
 def write(rows: list[dict]) -> int:
     """rows: Chunk.to_dict() + "vector". 기존 색인을 통째로 바꾼다."""
     db = lancedb.connect(INDEX_DIR)
     db.create_table(TABLE, data=rows, mode="overwrite")
-    _table.cache_clear()
     return len(rows)
 
 
-@lru_cache(maxsize=1)
 def _table():
+    """검색할 때마다 연다(약 2ms). 열어 둔 것을 들고 있으면, 다른 프로세스가 색인을 다시 만들어도
+    오래 도는 MCP 서버는 옛 색인을 계속 읽는다."""
     # 먼저 확인한다 — lancedb.connect는 없는 폴더를 만들어 버려서, 읽기만 해도 빈 색인 폴더가 남는다.
     if not (INDEX_DIR / f"{TABLE}.lance").exists():
-        raise IndexMissingError(f"{INDEX_DIR}에 색인이 없다 — python -m ingest.build_index로 만든다")
-    return lancedb.connect(INDEX_DIR).open_table(TABLE)
+        raise IndexUnavailableError(f"{INDEX_DIR}에 색인이 없다 — python -m ingest.build_index로 만든다")
+    try:
+        return lancedb.connect(INDEX_DIR).open_table(TABLE)
+    except ValueError as e:  # 폴더는 있는데 표가 비었거나 깨졌다
+        raise IndexUnavailableError(f"{INDEX_DIR}의 색인이 손상됐다 — python -m ingest.build_index로 다시 만든다") from e
 
 
 def search(query: str, k: int = 5, source: str | None = None) -> list[dict]:
@@ -42,7 +44,10 @@ def search(query: str, k: int = 5, source: str | None = None) -> list[dict]:
     q = table.search(vec).distance_type("cosine").limit(k)
     if source:
         q = q.where(f"source = '{source}'", prefilter=True)
-    hits = q.to_list()
+    try:
+        hits = q.to_list()
+    except RuntimeError as e:  # 데이터 파일이 빠진 색인 — lance가 RuntimeError로 알린다
+        raise IndexUnavailableError(f"{INDEX_DIR}의 색인이 손상됐다 — python -m ingest.build_index로 다시 만든다") from e
     for h in hits:
         h.pop("vector", None)
         h["score"] = round(1 - h.pop("_distance"), 4)

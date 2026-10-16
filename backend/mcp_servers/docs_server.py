@@ -34,8 +34,9 @@ SearchFn = Callable[..., list[dict[str, Any]]]
 # 가져올 조각 수는 서버가 정한다. 인자로 열어 두면 8B 모델이 k=1을 골라 근거를 스스로 좁혔다.
 TOP_K = 5
 
-SEARCH_DOC = """매뉴얼·규정에서 질문과 가까운 조각(results) 5개를 찾는다.
-조각마다 id, 출처(source), 위치(locator — 답의 근거로 이 값을 밝힌다), 제목, 본문, 쪽, 유사도(score, 1에 가까울수록 비슷)."""
+SEARCH_DOC = f"""매뉴얼·규정에서 질문과 가까운 조각(results) {TOP_K}개를 찾는다.
+조각마다 id, 출처(source), 위치(locator — 답의 근거로 이 값을 밝힌다), 제목, 본문, 유사도(score, 1에 가까울수록 비슷).
+매뉴얼 조각에는 PDF 쪽 번호(page)도 있다."""
 
 
 def create_server(search: SearchFn = store.search) -> MCPServer:
@@ -49,12 +50,21 @@ def create_server(search: SearchFn = store.search) -> MCPServer:
     ) -> dict[str, Any]:
         try:
             hits = search(query, k=TOP_K, source=None if source == "all" else source)
-        except store.IndexMissingError as e:
-            raise ToolError("문서 색인이 없다. 관리자가 `python -m ingest.build_index`로 색인을 만들어야 한다.") from e
+        except store.IndexUnavailableError as e:
+            raise ToolError("문서 색인이 없거나 손상됐다. 관리자가 `python -m ingest.build_index`로 색인을 만들어야 한다.") from e
+        except httpx.HTTPStatusError as e:  # 서버엔 닿았는데 오류 — 대개 임베딩 모델을 안 받아 둔 경우
+            log.warning("임베딩 요청 오류: %r", e)
+            raise ToolError(f"임베딩 서버(Ollama)가 오류 {e.response.status_code}로 답했다. 임베딩 모델(bge-m3)이 받아져 있는지 확인해야 한다.") from e
         except httpx.HTTPError as e:
             log.warning("임베딩 요청 실패: %r", e)
             raise ToolError("임베딩 서버(Ollama)에 연결하지 못해 검색할 수 없다.") from e
-        return {"results": [{f: h[f] for f in ("id", "source", "locator", "title", "text", "page", "score")} for h in hits]}
+        results = []
+        for h in hits:
+            row = {f: h[f] for f in ("id", "source", "locator", "title", "text", "score")}
+            if h.get("page"):  # 규정(CFR)은 쪽이 없어 0 — 내보내지 않는다
+                row["page"] = h["page"]
+            results.append(row)
+        return {"results": results}
 
     return server
 
