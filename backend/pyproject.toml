@@ -11,9 +11,11 @@ dependencies = [
 ]
 
 [dependency-groups]
-# 문서 수집에만 필요하다(Docling은 torch를 끌고 온다).
-ingest = ["docling>=2", "markdown>=3.6"]
-dev = ["pytest>=8"]
+# 매뉴얼 PDF를 만들 때 쓴다. 테스트도 설정값 표를 만들어 보므로 dev에 포함한다.
+manual = ["markdown>=3.6"]
+# 문서 수집에만 필요하다(Docling은 torch를 끌고 온다). CI에서는 설치하지 않는다.
+ingest = ["docling>=2", { include-group = "manual" }]
+dev = ["pytest>=8", { include-group = "manual" }]
 
 [tool.uv]
 package = false
