@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      # Ollama·Docling 없이 도는 테스트만. 기본 그룹(dev)만 설치한다.
+      - run: uv sync --locked --python 3.12
+      - run: uv run pytest -q

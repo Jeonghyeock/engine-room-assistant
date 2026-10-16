@@ -420,10 +420,14 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "markdown" },
     { name = "pytest" },
 ]
 ingest = [
     { name = "docling" },
+    { name = "markdown" },
+]
+manual = [
     { name = "markdown" },
 ]
 
@@ -436,11 +440,15 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "pytest", specifier = ">=8" }]
+dev = [
+    { name = "markdown", specifier = ">=3.6" },
+    { name = "pytest", specifier = ">=8" },
+]
 ingest = [
     { name = "docling", specifier = ">=2" },
     { name = "markdown", specifier = ">=3.6" },
 ]
+manual = [{ name = "markdown", specifier = ">=3.6" }]
 
 [[package]]
 name = "et-xmlfile"
