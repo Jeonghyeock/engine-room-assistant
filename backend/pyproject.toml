@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-# 매뉴얼 PDF를 만들 때 쓴다. 테스트도 설정값 표를 만들어 보므로 dev에 포함한다.
+# 매뉴얼 PDF를 만들 때 쓴다. 테스트가 import하는 ingest.build_manual이 markdown을 import하므로 dev에도 넣는다.
 manual = ["markdown>=3.6"]
 # 문서 수집에만 필요하다(Docling은 torch를 끌고 온다). CI에서는 설치하지 않는다.
 ingest = ["docling>=2", { include-group = "manual" }]
