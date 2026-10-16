@@ -1,0 +1,25 @@
+{
+  "_comment": "가상 선박의 평상시 값. 시나리오는 여기서 바뀌는 부분만 적는다. 교육용 가상 값이다.",
+  "values": {
+    "ME_RPM": 92,
+    "ME_EXH_TEMP_CYL1": 358,
+    "ME_EXH_TEMP_CYL2": 364,
+    "ME_EXH_TEMP_CYL3": 361,
+    "ME_EXH_TEMP_CYL4": 366,
+    "ME_EXH_TEMP_CYL5": 359,
+    "ME_EXH_TEMP_CYL6": 363,
+    "ME_EXH_TEMP_TC_IN": 425,
+    "ME_LO_PRESS_IN": 2.3,
+    "ME_LO_TEMP_IN": 45,
+    "LO_FILTER_DP": 0.35,
+    "LO_SUMP_LEVEL": 62,
+    "LO_PUMP1_STATE": "운전",
+    "LO_PUMP2_STATE": "대기",
+    "ME_JCW_TEMP_IN": 74,
+    "ME_JCW_TEMP_OUT": 84,
+    "ME_JCW_PRESS_IN": 3.8,
+    "ME_FO_PRESS_IN": 8.0,
+    "GE1_LOAD": 62,
+    "GE2_LOAD": 0
+  }
+}
