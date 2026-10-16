@@ -55,8 +55,10 @@ def test_unknown_source_is_rejected_by_schema():
 @pytest.mark.parametrize(
     "exc, text",
     [
-        (store.IndexMissingError("없음"), "색인이 없다"),
-        (httpx.ConnectError("refused"), "Ollama"),
+        (store.IndexUnavailableError("없음"), "색인이 없거나 손상"),
+        (httpx.ConnectError("refused"), "연결하지 못해"),
+        # 모델을 안 받아 둔 Ollama는 404로 답한다 — 연결 실패와 다르게 알려야 고칠 곳을 안다
+        (httpx.HTTPStatusError("404", request=httpx.Request("POST", "http://x"), response=httpx.Response(404)), "오류 404"),
     ],
 )
 def test_environment_failures_become_readable_errors(exc, text):
@@ -70,11 +72,32 @@ def test_environment_failures_become_readable_errors(exc, text):
 def test_missing_index_fails_without_leaving_an_empty_folder(tmp_path, monkeypatch):
     missing = tmp_path / "index"
     monkeypatch.setattr(store, "INDEX_DIR", missing)
-    store._table.cache_clear()
-    with pytest.raises(store.IndexMissingError):
+    with pytest.raises(store.IndexUnavailableError):
         store.search("x")
     assert not missing.exists()
-    store._table.cache_clear()
+
+
+def test_empty_index_folder_is_reported_as_damaged(tmp_path, monkeypatch):
+    (tmp_path / "chunks.lance").mkdir()  # 폴더만 있고 표가 없다
+    monkeypatch.setattr(store, "INDEX_DIR", tmp_path)
+    with pytest.raises(store.IndexUnavailableError, match="손상"):
+        store.search("x")
+
+
+def test_rebuilt_index_is_seen_without_restarting(tmp_path, monkeypatch):
+    """오래 도는 서버가 옛 색인을 붙들고 있지 않는다 — 다른 프로세스가 다시 만들면 다음 검색부터 새 색인."""
+    monkeypatch.setattr(store, "INDEX_DIR", tmp_path)
+    row = {"id": "a", "source": "manual", "locator": "매뉴얼 1.1", "title": "t", "text": "x", "page": 1, "vector": [1.0] + [0.0] * 1023}
+    store.write([row])
+    assert store.all_locators() == {"매뉴얼 1.1"}
+    store.write([{**row, "locator": "매뉴얼 9.9"}])
+    assert store.all_locators() == {"매뉴얼 9.9"}
+
+
+def test_cfr_results_have_no_page():
+    cfr_row = {**ROW, "id": "cfr:§62.30-1(b)", "source": "cfr", "locator": "§62.30-1(b)", "page": 0}
+    (out,) = call(create_server(lambda *a, **k: [cfr_row]), {"query": "x"}).structured_content["results"]
+    assert "page" not in out
 
 
 def _index_and_ollama_ready() -> bool:
