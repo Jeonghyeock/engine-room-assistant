@@ -32,8 +32,10 @@ class UnknownTagError(ValueError):
 
 class UnknownSystemError(ValueError):
     def __init__(self, name: str, systems: dict[str, str]):
-        listed = ", ".join(f"{k} {v}" for k, v in systems.items())
-        super().__init__(f"모르는 계통 {name!r}. 계통은 {listed} 중 하나이거나 비운다.")
+        # 코드를 먼저 적는다 — "ME 주기관"처럼 이름까지 붙여 쓰면 작은 모델이 그 문구를 그대로 값으로 넣는다.
+        codes = ", ".join(systems)
+        meaning = ", ".join(f"{k}={v}" for k, v in systems.items())
+        super().__init__(f"모르는 계통 {name!r}. 계통 코드 {codes} 중 하나만 넣거나 비운다({meaning}).")
 
 
 def _iso(t: datetime) -> str:
@@ -78,10 +80,12 @@ class AlarmMonitoringSystem:
         return "정상" if lo <= value <= hi else "정상 범위 밖"
 
     def list_tags(self, system: str | None = None) -> list[dict]:
-        if system:
-            system = system.strip().upper()
-            if system not in self.systems:
+        if system and system.strip():
+            # "ME 주기관", "me(주기관)"처럼 이름이 붙어 와도 앞의 코드만 본다.
+            code = system.strip().split()[0].split("(")[0].split("=")[0].upper()
+            if code not in self.systems:
                 raise UnknownSystemError(system, self.systems)
+            system = code
         out = []
         for t in self.tags.values():
             if system and t["system"] != system:

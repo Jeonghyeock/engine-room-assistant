@@ -84,9 +84,15 @@ def test_list_tags_filters_by_system(ams):
     assert len(ams["S1"].list_tags()) == 20
 
 
-def test_unknown_system_lists_the_valid_ones(ams):
-    with pytest.raises(UnknownSystemError, match="ME 주기관"):
+def test_unknown_system_lists_codes_first(ams):
+    with pytest.raises(UnknownSystemError, match="계통 코드 ME, LO, JCW, FO, GE 중 하나만"):
         ams["S1"].list_tags("주기관")
+
+
+def test_system_code_with_name_attached_is_accepted(ams):
+    """리뷰에서 qwen3:8b가 설명 문구 그대로 "ME 주기관"을 넣었다 — 앞의 코드만 본다."""
+    assert {t["system"] for t in ams["S1"].list_tags("ME 주기관")} == {"ME"}
+    assert {t["system"] for t in ams["S1"].list_tags("lo(윤활유)")} == {"LO"}
 
 
 def test_alarm_through_whole_window_has_no_made_up_onset():
