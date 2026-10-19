@@ -126,20 +126,22 @@ def judged_ok(turn: Turn) -> bool:
 # ---- 실행 ----
 
 
-async def run_scenario(spec: dict, opts: ChatOptions, prompt: str = DEFAULT_PROMPT, guard: bool = True) -> list[Turn]:
+async def run_scenario(
+    spec: dict, opts: ChatOptions, prompt: str = DEFAULT_PROMPT, guard: bool = True, follow_up_search: bool = True
+) -> list[Turn]:
     turns = []
     conv = Conversation(prompt=prompt)
     async with ToolBox(spec["id"]) as box:
         for t in spec["turns"]:
             turn = Turn(t["ask"])
             round_ = 0
-            async with aclosing(run_turn(conv, t["ask"], box, opts, guard=guard)) as events:
+            async with aclosing(run_turn(conv, t["ask"], box, opts, guard=guard, follow_up_search=follow_up_search)) as events:
                 async for ev in events:
                     match ev:
                         case StepStart():
                             if ev.tool == "check_citations":  # 지금까지의 글은 되돌린 초안
                                 turn.drafts.append(turn.answer)
-                            turn.steps.append({"tool": ev.tool, "args": ev.args})
+                            turn.steps.append({"tool": ev.tool, "args": ev.args, "auto": ev.auto})
                         case StepEnd():
                             turn.steps[-1] |= {"ok": ev.ok, "summary": ev.summary}
                         case Token():
@@ -177,7 +179,7 @@ def transcript(sid: str, seed: int, turns: list[Turn], results: list[dict]) -> s
     for turn, res in zip(turns, results):
         lines += [f"## 질문: {turn.ask}", ""]
         for s in turn.steps:
-            lines.append(f"- `{s['tool']}({s['args']})` → {'✓' if s.get('ok') else '✗'} {s.get('summary', '')}")
+            lines.append(f"- {'(자동) ' if s.get('auto') else ''}`{s['tool']}({s['args']})` → {'✓' if s.get('ok') else '✗'} {s.get('summary', '')}")
         for i, d in enumerate(turn.drafts, 1):
             lines += ["", f"<details><summary>근거 검사로 되돌린 초안 {i}</summary>", "", d.strip(), "", "</details>"]
         lines += ["", turn.answer.strip() or "(답 없음)", ""]
@@ -196,13 +198,15 @@ def transcript(sid: str, seed: int, turns: list[Turn], results: list[dict]) -> s
     return "\n".join(lines)
 
 
-async def evaluate(specs: list[dict], opts: ChatOptions, label: str, prompt: str = DEFAULT_PROMPT, guard: bool = True) -> str:
+async def evaluate(
+    specs: list[dict], opts: ChatOptions, label: str, prompt: str = DEFAULT_PROMPT, guard: bool = True, follow_up_search: bool = True
+) -> str:
     out_dir = HERE / "results" / "transcripts" / label
     out_dir.mkdir(parents=True, exist_ok=True)
     table: dict[tuple, list[bool]] = {}  # (시나리오, 차례 번호, 칸) → 실행마다 통과 여부
     for spec in specs:
         for seed in SEEDS:
-            turns = await run_scenario(spec, ChatOptions(**{**opts.__dict__, "seed": seed}), prompt, guard)
+            turns = await run_scenario(spec, ChatOptions(**{**opts.__dict__, "seed": seed}), prompt, guard, follow_up_search)
             results = []
             for turn, expect in zip(turns, spec["turns"]):
                 await judge_turn(turn, expect)
@@ -221,7 +225,7 @@ async def evaluate(specs: list[dict], opts: ChatOptions, label: str, prompt: str
     lines = [
         f"# 시나리오 평가 — {label}",
         "",
-        f"{dt.date.today()} · {opts.model} · 프롬프트 {prompt} · 근거 검사 {'켬' if guard else '끔'} · temperature {opts.temperature} · think={'켬' if opts.think else '끔'} · num_ctx {opts.num_ctx} · 씨앗 {SEEDS}",
+        f"{dt.date.today()} · {opts.model} · 프롬프트 {prompt} · 근거 검사 {'켬' if guard else '끔'} · 이어지는 질문 자동 검색 {'켬' if follow_up_search else '끔'} · temperature {opts.temperature} · think={'켬' if opts.think else '끔'} · num_ctx {opts.num_ctx} · 씨앗 {SEEDS}",
         "",
         "칸은 통과 수/실행 수. **전체 = 정해진 검사만**(판정은 표시 — 답 전문의 판정 원문과 함께 사람이 읽고 판단).",
         "",
@@ -246,6 +250,7 @@ def main() -> None:
     ap.add_argument("--only", nargs="*", help="S1 S2 … 중 일부만")
     ap.add_argument("--prompt", default=DEFAULT_PROMPT, help="시스템 프롬프트 판본(app.prompts) — v1이 기준선")
     ap.add_argument("--no-guard", action="store_true", help="근거 검사를 끈다(기준선과 비교용)")
+    ap.add_argument("--no-follow-up-search", action="store_true", help="이어지는 질문의 자동 검색을 끈다(비교용)")
     a = ap.parse_args()
     out = HERE / "results" / f"scenarios-{a.label}.md"
     if out.exists() and not a.overwrite:
@@ -253,7 +258,7 @@ def main() -> None:
     specs = yaml.safe_load((HERE / "scenarios.yaml").read_text(encoding="utf-8"))
     if a.only:
         specs = [s for s in specs if s["id"] in a.only]
-    md = asyncio.run(evaluate(specs, ChatOptions(think=a.think, temperature=a.temperature, num_ctx=a.num_ctx), a.label, a.prompt, not a.no_guard))
+    md = asyncio.run(evaluate(specs, ChatOptions(think=a.think, temperature=a.temperature, num_ctx=a.num_ctx), a.label, a.prompt, not a.no_guard, not a.no_follow_up_search))
     out.write_text(md, encoding="utf-8")
     print(md)
 
