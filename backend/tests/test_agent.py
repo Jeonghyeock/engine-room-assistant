@@ -5,6 +5,7 @@ import json
 from contextlib import aclosing
 
 from app.agent import (
+    MAX_RECHECKS,
     MAX_ROUNDS,
     Citation,
     Conversation,
@@ -221,3 +222,46 @@ def test_stopping_early_closes_the_model_stream():
 
     asyncio.run(go())
     assert closed == [True]
+
+
+def test_guard_sends_an_unsearched_answer_back_to_search():
+    """평가 기준선에서 실제로 나온 모양 — 검색 없이 [1]을 붙인 답을 받지 않고 검색하게 한다."""
+    box = FakeBox({"list_active_alarms": ToolResult(True, {"alarms": []}), "search_docs": ToolResult(True, {"results": [CHUNK_44]})})
+    llm = FakeLLM(
+        calls(("list_active_alarms", {})),
+        answer("필터를 점검한다 [1]."),  # 검색 없이 지어 붙인 번호
+        calls(("search_docs", {"query": "윤활유 압력 낮음", "source": "manual"})),
+        answer("감속 상태에서 압력부터 회복한다 [1]."),
+    )
+    events = run(Conversation(), "알람 분석", llm, box)
+    steps = [(e.tool, e.args) for e in events if isinstance(e, StepStart)]
+    assert steps[1] == ("check_citations", {"unverified": ["[1]"]})
+    assert "(자동 검사)" in llm.seen[2][-1]["content"]  # 모델이 되돌림 이유를 봤다
+    assert [(c.n, c.verified) for c in events if isinstance(c, Citation)] == [(1, True)]  # 되돌린 답의 인용은 내지 않는다
+    assert events[-1].rechecks == 1
+
+
+def test_guard_gives_up_after_max_rechecks_and_reports_the_answer():
+    llm = FakeLLM(*[answer("지어낸 근거 [3].")] * (MAX_RECHECKS + 1))
+    events = run(Conversation(), "?", llm, FakeBox({}))
+    assert events[-1].rechecks == MAX_RECHECKS
+    assert [(c.n, c.verified) for c in events if isinstance(c, Citation)] == [(3, False)]  # 평가가 잡도록 그대로 낸다
+
+
+def test_guard_can_be_turned_off_for_comparison():
+    async def go():
+        return [ev async for ev in run_turn(Conversation(), "?", FakeBox({}), ChatOptions(), llm=FakeLLM(answer("근거 [1].")), guard=False)]
+    events = asyncio.run(go())
+    assert not any(isinstance(e, StepStart) for e in events) and events[-1].rechecks == 0
+
+
+def test_answer_without_citations_is_not_sent_back():
+    events = run(Conversation(), "현재 압력은?", FakeLLM(answer("1.62 bar다.")), FakeBox({}))
+    assert isinstance(events[-1], Done) and events[-1].rechecks == 0
+
+
+def test_prompt_version_is_chosen_per_conversation():
+    from app.prompts import PROMPTS
+
+    assert Conversation(prompt="v1").messages[0]["content"] == PROMPTS["v1"]
+    assert Conversation().messages[0]["content"] == PROMPTS["v2"]
