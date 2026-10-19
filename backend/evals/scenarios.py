@@ -39,6 +39,7 @@ class Turn:
     done: Done | None = None
     error: Error | None = None
     judgements: list[dict] = field(default_factory=list)  # {criterion, want, raw, verdict}
+    drafts: list[str] = field(default_factory=list)  # 근거 검사로 되돌린 초안
 
 
 # ---- 정해진 검사 ----
@@ -125,6 +126,8 @@ async def run_scenario(spec: dict, opts: ChatOptions, prompt: str = DEFAULT_PROM
                 async for ev in events:
                     match ev:
                         case StepStart():
+                            if ev.tool == "check_citations":  # 지금까지의 글은 되돌린 초안
+                                turn.drafts.append(turn.answer)
                             turn.steps.append({"tool": ev.tool, "args": ev.args})
                         case StepEnd():
                             turn.steps[-1] |= {"ok": ev.ok, "summary": ev.summary}
@@ -137,7 +140,7 @@ async def run_scenario(spec: dict, opts: ChatOptions, prompt: str = DEFAULT_PROM
                             turn.citations.append(ev)
                         case Done():
                             turn.done = ev
-                            if round_ != ev.rounds:  # 마지막 왕복에 글이 없었다 — 앞 왕복의 짧은 말을 답으로 두지 않는다
+                            if round_ != ev.model_calls - 1:  # 마지막 호출에 글이 없었다 — 앞 호출의 짧은 말을 답으로 두지 않는다
                                 turn.answer = ""
                         case Error():
                             turn.error = ev
@@ -164,6 +167,8 @@ def transcript(sid: str, seed: int, turns: list[Turn], results: list[dict]) -> s
         lines += [f"## 질문: {turn.ask}", ""]
         for s in turn.steps:
             lines.append(f"- `{s['tool']}({s['args']})` → {'✓' if s.get('ok') else '✗'} {s.get('summary', '')}")
+        for i, d in enumerate(turn.drafts, 1):
+            lines += ["", f"<details><summary>근거 검사로 되돌린 초안 {i}</summary>", "", d.strip(), "", "</details>"]
         lines += ["", turn.answer.strip() or "(답 없음)", ""]
         for c in turn.citations:
             lines.append(f"- [{c.n}] {c.locator} — {c.title}" if c.verified else f"- {c.locator} — ⚠ 검색된 적 없는 근거")
