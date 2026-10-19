@@ -21,33 +21,23 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.llm import ChatOptions, Done as LLMDone, LLMError, TextDelta, ToolCalls, stream_chat
+from app.prompts import DEFAULT as DEFAULT_PROMPT, PROMPTS
 from app.tools import ToolResult
 
 MAX_ROUNDS = 8  # 도구를 부르는 왕복 최대 횟수
 MAX_FAILED_ROUNDS = 3  # 부른 도구가 모두 실패한 왕복이 이만큼 이어지면 멈춘다(틀린 태그만 되풀이하는 경우)
 MAX_CITE_NUMBER = 99  # 이보다 큰 [숫자]는 인용으로 보지 않는다([2026] 같은 연도·값)
+MAX_RECHECKS = 2  # 근거 검사로 답을 되돌리는 최대 횟수
+
+RECHECK_NOTE = (
+    "(자동 검사) 방금 답의 근거 {cited}는 이번 대화에서 검색된 적이 없다. "
+    "search_docs로 매뉴얼(필요하면 규정)을 찾은 뒤, 검색 결과의 번호로만 근거를 달아 다시 답하라."
+)
 # 문맥이 num_ctx를 넘으면 Ollama는 오래된 대화(앞쪽 질문·도구 결과)를 잘라낸 뒤 남은 길이를 보고한다.
 # 그래서 보고된 길이는 num_ctx를 넘지 않는다 — 이만큼 가까우면 잘렸을 수 있다고 본다.
 CONTEXT_LIMIT_RATIO = 0.9
 
-SYSTEM_PROMPT = """너는 선박 기관실 당직 기관사를 돕는 알람 대응 어시스턴트다. 교육용 가상 선박이다.
-알람이나 질문을 받으면 도구로 사실을 확인하고, 매뉴얼과 규정에서 근거를 찾아 조치를 권고한다.
-
-규칙
-1. 권고만 한다. 장비를 조작하거나 설정을 바꾸는 도구는 없고, 결정과 조작은 사람이 한다.
-2. 수치는 도구 결과와 문서에 있는 것만 쓴다. 짐작한 수치를 쓰지 않는다.
-3. 근거는 search_docs 결과의 번호로 문장 끝에 [1], [2]처럼 단다. 결과에 없는 번호를 만들지 않는다.
-4. 정지·감속 같은 안전 장치를 우회하라고 권하지 않는다. 우회를 물으면 하면 안 되는 이유를 근거와 함께 말한다.
-5. 값이 1분 사이에 물리적으로 어려울 만큼 바뀌었거나 측정 범위 끝에 붙어 있으면 센서 고장 가능성을 말하고 현장 계기로 확인하라고 권한다. 확인 전에는 실제 이상일 가능성도 열어 둔다.
-
-순서
-list_active_alarms로 무엇이 울리는지 보고 → read_sensors·get_trend로 관련 값과 변화를 확인하고 → search_docs(source="manual")로 매뉴얼 절차를 찾고 → 필요하면 search_docs(source="cfr")로 규정을 찾는다.
-
-답 형식(한국어)
-- 상황: 무엇이 언제부터 어떤 값인지
-- 가능한 원인
-- 권고 조치: 순서대로
-각 문장의 근거를 [n]으로 단다."""
+SYSTEM_PROMPT = PROMPTS[DEFAULT_PROMPT]
 
 
 # ---- 이벤트(설계 문서 6.5) ----
@@ -93,6 +83,7 @@ class Done:
     max_prompt_tokens: int  # 가장 컸던 문맥 길이(num_ctx를 넘지 않는다 — 위 CONTEXT_LIMIT_RATIO)
     num_ctx: int
     truncated: bool = False  # 답이 num_predict에서 잘렸다
+    rechecks: int = 0  # 근거 검사로 답을 되돌린 횟수
 
     @property
     def context_near_limit(self) -> bool:
@@ -113,10 +104,15 @@ Event = StepStart | StepEnd | Token | Citation | Done | Error
 
 @dataclass
 class Conversation:
-    messages: list[dict] = field(default_factory=lambda: [{"role": "system", "content": SYSTEM_PROMPT}])
+    prompt: str = DEFAULT_PROMPT  # 시스템 프롬프트 판본(app.prompts)
+    messages: list[dict] = field(default_factory=list)
     chunks: dict[int, dict] = field(default_factory=dict)  # 번호 → 검색 조각
     _by_id: dict[str, int] = field(default_factory=dict, init=False, repr=False, compare=False)
     _steps: int = field(default=0, init=False, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        if not self.messages:
+            self.messages = [{"role": "system", "content": PROMPTS[self.prompt]}]
 
     def number(self, results: list[dict]) -> list[dict]:
         """검색 조각에 이번 대화 안의 번호를 붙여, 모델이 볼 모양으로 돌려준다(id·점수는 빼고)."""
@@ -246,13 +242,18 @@ async def run_turn(
     box: _Box,
     opts: ChatOptions | None = None,
     llm: LLM = stream_chat,
+    guard: bool = True,
 ) -> AsyncIterator[Event]:
-    """사용자 질문 하나에 답할 때까지. 이벤트를 차례로 낸다."""
+    """사용자 질문 하나에 답할 때까지. 이벤트를 차례로 낸다.
+
+    guard: 근거 검사. 답에 이번 대화에서 검색된 적 없는 근거가 있으면 그 답을 받지 않고, 먼저 검색하라고
+    되돌린다(최대 MAX_RECHECKS번). 되돌림은 check_citations 단계로 드러나 화면에서도 보인다.
+    """
     opts = opts or ChatOptions()
     turn_start = len(conv.messages)  # 이 차례가 실패하면 여기까지 되돌려 다음 질문이 깨진 기록을 이어받지 않게
     conv.messages.append({"role": "user", "content": user_text})
     started = time.perf_counter()
-    rounds = failed_rounds = completion_tokens = 0
+    rounds = failed_rounds = completion_tokens = rechecks = 0
     eval_seconds = 0.0
     max_prompt = 0
     reason = ""
@@ -290,7 +291,17 @@ async def run_turn(
         conv.messages.append(assistant)
 
         if not calls:  # 답이 나왔다
-            for c in find_citations(assistant["content"], conv):
+            cites = find_citations(assistant["content"], conv)
+            unverified = [c.locator for c in cites if not c.verified]
+            if guard and unverified and rechecks < MAX_RECHECKS and rounds < MAX_ROUNDS:
+                rechecks += 1
+                rounds += 1
+                step = conv.next_step()
+                yield StepStart(step, "check_citations", {"unverified": unverified})
+                conv.messages.append({"role": "user", "content": RECHECK_NOTE.format(cited=", ".join(unverified))})
+                yield StepEnd(step, False, f"검색된 적 없는 근거 {', '.join(unverified)} — 검색한 뒤 다시 답하게 함")
+                continue
+            for c in cites:
                 yield c
             yield Done(
                 tokens=completion_tokens,
@@ -300,6 +311,7 @@ async def run_turn(
                 max_prompt_tokens=max_prompt,
                 num_ctx=opts.num_ctx,
                 truncated=reason == "length",
+                rechecks=rechecks,
             )
             return
 

@@ -21,6 +21,7 @@ import yaml
 
 from app.agent import Citation, Conversation, Done, Error, StepEnd, StepStart, Token, run_turn
 from app.llm import ChatOptions, TextDelta, stream_chat
+from app.prompts import DEFAULT as DEFAULT_PROMPT
 from app.tools import ToolBox
 
 HERE = Path(__file__).resolve().parent
@@ -113,14 +114,14 @@ def judged_ok(turn: Turn) -> bool:
 # ---- 실행 ----
 
 
-async def run_scenario(spec: dict, opts: ChatOptions) -> list[Turn]:
+async def run_scenario(spec: dict, opts: ChatOptions, prompt: str = DEFAULT_PROMPT, guard: bool = True) -> list[Turn]:
     turns = []
-    conv = Conversation()
+    conv = Conversation(prompt=prompt)
     async with ToolBox(spec["id"]) as box:
         for t in spec["turns"]:
             turn = Turn(t["ask"])
             round_ = 0
-            async with aclosing(run_turn(conv, t["ask"], box, opts)) as events:
+            async with aclosing(run_turn(conv, t["ask"], box, opts, guard=guard)) as events:
                 async for ev in events:
                     match ev:
                         case StepStart():
@@ -168,7 +169,7 @@ def transcript(sid: str, seed: int, turns: list[Turn], results: list[dict]) -> s
             lines.append(f"- [{c.n}] {c.locator} — {c.title}" if c.verified else f"- {c.locator} — ⚠ 검색된 적 없는 근거")
         if turn.done:
             d = turn.done
-            lines.append(f"\n({d.rounds}번 도구 왕복, {d.tokens} 토큰, {d.tok_per_s} tok/s, {d.elapsed_ms / 1000:.1f}초, 문맥 최대 {d.max_prompt_tokens}/{d.num_ctx})")
+            lines.append(f"\n({d.rounds}번 도구 왕복, 근거 검사로 {d.rechecks}번 되돌림, {d.tokens} 토큰, {d.tok_per_s} tok/s, {d.elapsed_ms / 1000:.1f}초, 문맥 최대 {d.max_prompt_tokens}/{d.num_ctx})")
         if turn.error:
             lines.append(f"\n✗ {turn.error.code}: {turn.error.message}")
         lines += ["", "검사: " + ", ".join(f"{k} {'✓' if v else '✗'}" for k, v in res.items()), ""]
@@ -179,13 +180,13 @@ def transcript(sid: str, seed: int, turns: list[Turn], results: list[dict]) -> s
     return "\n".join(lines)
 
 
-async def evaluate(specs: list[dict], opts: ChatOptions, label: str) -> str:
+async def evaluate(specs: list[dict], opts: ChatOptions, label: str, prompt: str = DEFAULT_PROMPT, guard: bool = True) -> str:
     out_dir = HERE / "results" / "transcripts" / label
     out_dir.mkdir(parents=True, exist_ok=True)
     table: dict[tuple, list[bool]] = {}  # (시나리오, 차례 번호, 칸) → 실행마다 통과 여부
     for spec in specs:
         for seed in SEEDS:
-            turns = await run_scenario(spec, ChatOptions(**{**opts.__dict__, "seed": seed}))
+            turns = await run_scenario(spec, ChatOptions(**{**opts.__dict__, "seed": seed}), prompt, guard)
             results = []
             for turn, expect in zip(turns, spec["turns"]):
                 await judge_turn(turn, expect)
@@ -204,7 +205,7 @@ async def evaluate(specs: list[dict], opts: ChatOptions, label: str) -> str:
     lines = [
         f"# 시나리오 평가 — {label}",
         "",
-        f"{dt.date.today()} · {opts.model} · temperature {opts.temperature} · think={'켬' if opts.think else '끔'} · num_ctx {opts.num_ctx} · 씨앗 {SEEDS}",
+        f"{dt.date.today()} · {opts.model} · 프롬프트 {prompt} · 근거 검사 {'켬' if guard else '끔'} · temperature {opts.temperature} · think={'켬' if opts.think else '끔'} · num_ctx {opts.num_ctx} · 씨앗 {SEEDS}",
         "",
         "칸은 통과 수/실행 수. **전체 = 정해진 검사만**(판정은 표시 — 답 전문의 판정 원문과 함께 사람이 읽고 판단).",
         "",
@@ -227,6 +228,8 @@ def main() -> None:
     ap.add_argument("--temperature", type=float, default=EVAL_TEMPERATURE)
     ap.add_argument("--num-ctx", type=int, default=8192)
     ap.add_argument("--only", nargs="*", help="S1 S2 … 중 일부만")
+    ap.add_argument("--prompt", default=DEFAULT_PROMPT, help="시스템 프롬프트 판본(app.prompts) — v1이 기준선")
+    ap.add_argument("--no-guard", action="store_true", help="근거 검사를 끈다(기준선과 비교용)")
     a = ap.parse_args()
     out = HERE / "results" / f"scenarios-{a.label}.md"
     if out.exists() and not a.overwrite:
@@ -234,7 +237,7 @@ def main() -> None:
     specs = yaml.safe_load((HERE / "scenarios.yaml").read_text(encoding="utf-8"))
     if a.only:
         specs = [s for s in specs if s["id"] in a.only]
-    md = asyncio.run(evaluate(specs, ChatOptions(think=a.think, temperature=a.temperature, num_ctx=a.num_ctx), a.label))
+    md = asyncio.run(evaluate(specs, ChatOptions(think=a.think, temperature=a.temperature, num_ctx=a.num_ctx), a.label, a.prompt, not a.no_guard))
     out.write_text(md, encoding="utf-8")
     print(md)
 
