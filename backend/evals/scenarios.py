@@ -97,6 +97,7 @@ async def run_scenario(spec: dict, opts: ChatOptions) -> list[Turn]:
     async with ToolBox(spec["id"]) as box:
         for t in spec["turns"]:
             turn = Turn(t["ask"])
+            round_ = 0
             async with aclosing(run_turn(conv, t["ask"], box, opts)) as events:
                 async for ev in events:
                     match ev:
@@ -105,6 +106,9 @@ async def run_scenario(spec: dict, opts: ChatOptions) -> list[Turn]:
                         case StepEnd():
                             turn.steps[-1] |= {"ok": ev.ok, "summary": ev.summary}
                         case Token():
+                            # 도구를 부르기 전의 짧은 말은 답이 아니다 — 마지막 왕복의 글만 답으로
+                            if ev.round != round_:
+                                turn.answer, round_ = "", ev.round
                             turn.answer += ev.text
                         case Citation():
                             turn.citations.append(ev)
@@ -126,7 +130,7 @@ def transcript(sid: str, seed: int, turns: list[Turn], results: list[dict]) -> s
             lines.append(f"- `{s['tool']}({s['args']})` → {'✓' if s.get('ok') else '✗'} {s.get('summary', '')}")
         lines += ["", turn.answer.strip() or "(답 없음)", ""]
         for c in turn.citations:
-            lines.append(f"- [{c.n}] {c.locator} {'— ' + c.title if c.verified else '— ⚠ 검색된 적 없는 근거'}")
+            lines.append(f"- [{c.n}] {c.locator} — {c.title}" if c.verified else f"- {c.locator} — ⚠ 검색된 적 없는 근거")
         if turn.done:
             d = turn.done
             lines.append(f"\n({d.rounds}번 도구 왕복, {d.tokens} 토큰, {d.tok_per_s} tok/s, {d.elapsed_ms / 1000:.1f}초, 문맥 최대 {d.max_prompt_tokens}/{d.num_ctx})")
