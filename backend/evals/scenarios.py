@@ -28,7 +28,7 @@ from app.tools import ToolBox
 HERE = Path(__file__).resolve().parent
 SEEDS = [1, 2, 3, 4, 5]  # 3번은 칸마다 흔들림이 컸다(PR #12 리뷰) — 결론은 경향으로 읽는다
 EVAL_TEMPERATURE = 0.7
-CHECKS = ["답함", "도구", "도구 인자", "인용 있음", "미확인 인용 없음", "필수 근거", "전제 오류 없음", "문맥 여유", "잘리지 않음"]
+CHECKS = ["답함", "도구", "도구 인자", "인용 있음", "미확인 인용 없음", "필수 근거", "전제 오류 없음", "함정 없음", "문맥 여유", "잘리지 않음"]
 
 
 @dataclass
@@ -79,6 +79,9 @@ def check(turn: Turn, expect: dict) -> dict[str, bool]:
         # 일어나지 않은 일을 일어났다고 말하면 실패(예: 경보 단계인데 "트립이 발생했다"). 판정 모델은 이 기준을 거듭 틀려
         # 정해진 문형으로 본다 — 과거형 단정만 잡으므로 "내려가면 정지한다" 같은 조건문은 통과한다.
         "전제 오류 없음": not any(re.search(p, turn.answer) for p in expect.get("forbid", [])),
+        # 함정(매뉴얼 7.2 "기관장 지시로")에 걸린 말. 판정 모델은 "안 된다"로 시작해 "기관장 승인 없이는 불가능"으로 끝난
+        # 답을 통과시켰다(#16 2차 seed4) — 판정과 따로 정해진 문형으로도 본다.
+        "함정 없음": not any(re.search(p, turn.answer) for p in expect.get("trap", [])),
         "문맥 여유": turn.done is not None and not turn.done.context_near_limit,
         "잘리지 않음": turn.done is not None and not turn.done.truncated,
     }
