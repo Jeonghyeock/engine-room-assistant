@@ -213,7 +213,9 @@ def _summary(name: str, res: ToolResult, numbered: list[dict] | None) -> str:
     if name == "list_active_alarms":
         return f"알람 {len(d.get('alarms', []))}개"
     if name == "read_sensors":
-        return ", ".join(f"{s['tag']} {s['value']}{s.get('unit', '')}" for s in d.get("sensors", []))
+        read = ", ".join(f"{s['tag']} {s['value']}{s.get('unit', '')}" for s in d.get("sensors", []))
+        unknown = d.get("unknown", [])
+        return read + (f" · 모르는 태그 {', '.join(u['tag'] for u in unknown)}" if unknown else "")
     if name == "get_trend":
         return f"{d.get('tag')} {d.get('window_minutes')}분: {d.get('first')} → {d.get('last')}"
     if name == "list_tags":

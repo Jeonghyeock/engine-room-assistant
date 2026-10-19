@@ -66,8 +66,13 @@ def create_server(scenario_id: str) -> MCPServer:
         tags: Annotated[list[str], Field(description="읽을 태그 이름 1개 이상의 배열. 예: [\"ME_LO_PRESS_IN\", \"LO_FILTER_DP\"]", min_length=1)],
     ) -> dict[str, Any]:
         """태그들의 현재값(sensors). 숫자 태그는 상태(정상 / 정상 범위 밖 / 경보 / 감속 / 정지)와 단위·정상 범위·측정 범위도 준다.
-        펌프 같은 상태 태그는 값(운전 / 대기 / 정지)만 준다 — 이 "정지"는 펌프가 멈췄다는 뜻이지 알람 등급이 아니다."""
-        return {"sensors": _known(lambda: ams.read_sensors(tags))}
+        펌프 같은 상태 태그는 값(운전 / 대기 / 정지)만 준다 — 이 "정지"는 펌프가 멈췄다는 뜻이지 알람 등급이 아니다.
+        모르는 태그가 섞여 있으면 아는 태그는 읽고, 모르는 태그는 unknown에 비슷한 태그(similar)와 함께 준다."""
+        rows, unknown = ams.read_known(tags)
+        if not rows:  # 하나도 못 읽었으면 오류로 — 모델이 비슷한 태그나 list_tags로 고치게
+            listed = "; ".join(f"{u['tag']}(비슷한 태그: {', '.join(u['similar']) or '없음'})" for u in unknown)
+            raise ToolError(f"모르는 태그만 있다: {listed}. list_tags로 태그 목록을 볼 수 있다.")
+        return {"sensors": rows} | ({"unknown": unknown} if unknown else {})
 
     @tool
     def get_trend(
