@@ -48,6 +48,7 @@ class StepStart:
     id: int
     tool: str
     args: dict[str, Any]
+    auto: bool = False  # 모델이 아니라 에이전트가 스스로 부른 단계(이어지는 질문의 자동 검색)
 
 
 @dataclass
@@ -108,6 +109,7 @@ class Conversation:
     prompt: str = DEFAULT_PROMPT  # 시스템 프롬프트 판본(app.prompts)
     messages: list[dict] = field(default_factory=list)
     chunks: dict[int, dict] = field(default_factory=dict)  # 번호 → 검색 조각
+    alarms: list[str] = field(default_factory=list)  # 마지막으로 본 알람 이름 — 이어지는 질문의 검색어에 붙인다
     _by_id: dict[str, int] = field(default_factory=dict, init=False, repr=False, compare=False)
     _steps: int = field(default=0, init=False, repr=False, compare=False)
 
@@ -126,6 +128,11 @@ class Conversation:
                 self.chunks[n] = r
             out.append({"n": n, "source": r["source"], "locator": r["locator"], "title": r["title"], "text": r["text"]})
         return out
+
+    @property
+    def answered(self) -> bool:
+        """앞 차례에 받아들인 답이 있는가 — 있으면 지금 질문은 이어지는 질문이다."""
+        return any(m["role"] == "assistant" and not m.get("tool_calls") for m in self.messages)
 
     def next_step(self) -> int:
         self._steps += 1
@@ -246,14 +253,19 @@ async def run_turn(
     opts: ChatOptions | None = None,
     llm: LLM = stream_chat,
     guard: bool = True,
+    follow_up_search: bool = True,
 ) -> AsyncIterator[Event]:
     """사용자 질문 하나에 답할 때까지. 이벤트를 차례로 낸다.
 
     guard: 근거 검사. 답에 이번 대화에서 검색된 적 없는 근거가 있으면 그 답을 받지 않고, 먼저 검색하라고
     되돌린다(최대 MAX_RECHECKS번). 되돌림은 check_citations 단계로 드러나 화면에서도 보인다.
+    follow_up_search: 이어지는 질문이면 모델을 부르기 전에 에이전트가 "질문 + 지금 알람 이름"으로 먼저 검색해
+    결과를 대화에 넣는다. 8B 모델은 프롬프트(v3·v4)로 일러도, 검색을 강제해도(#14) 이어지는 질문에서 의미 있는
+    검색을 스스로 시작하지 않았다 — 첫 차례에서 찾은 조각에 기대 답했다.
     """
     opts = opts or ChatOptions()
     turn_start = len(conv.messages)  # 이 차례가 실패하면 여기까지 되돌려 다음 질문이 깨진 기록을 이어받지 않게
+    follow_up = conv.answered
     conv.messages.append({"role": "user", "content": user_text})
     started = time.perf_counter()
     rounds = failed_rounds = completion_tokens = rechecks = model_calls = 0
@@ -268,6 +280,21 @@ async def run_turn(
     def fail(code: str, message: str) -> Error:
         del conv.messages[turn_start:]
         return Error(code, message)
+
+    if follow_up and follow_up_search:
+        # 질문만으로는 "트립을 우회해도 되나?"처럼 무엇의 트립인지 빠져 있다 — 지금 알람 이름을 붙여 검색한다.
+        query = user_text + (f" (지금 알람: {', '.join(conv.alarms)})" if conv.alarms else "")
+        step = conv.next_step()
+        yield StepStart(step, "search_docs", {"query": query}, auto=True)
+        res = await box.call("search_docs", {"query": query})
+        if res.ok:
+            numbered = conv.number(res.data["results"])
+            # 모델이 직접 부른 것처럼 호출과 결과를 함께 넣는다(호출 없이 결과만 있으면 템플릿에서 어색하다)
+            conv.messages.append({"role": "assistant", "content": "", "tool_calls": [{"function": {"name": "search_docs", "arguments": {"query": query}}}]})
+            conv.messages.append({"role": "tool", "tool_name": "search_docs", "content": _compact({"results": numbered})})
+            yield StepEnd(step, True, "자동 검색 · " + _summary("search_docs", res, numbered))
+        else:  # 검색이 안 되면 그냥 모델에게 맡긴다
+            yield StepEnd(step, False, "자동 검색 실패 · " + (res.error or "")[:150])
 
     while True:
         text: list[str] = []
@@ -336,6 +363,8 @@ async def run_turn(
             yield StepStart(step, call.name, call.arguments)
             res = await box.call(call.name, call.arguments)
             numbered = conv.number(res.data["results"]) if res.ok and call.name == "search_docs" else None
+            if res.ok and call.name == "list_active_alarms":
+                conv.alarms = [a.get("name") or a.get("tag", "") for a in (res.data or {}).get("alarms", [])]
             if res.ok:
                 content = _compact({"results": numbered} if numbered is not None else res.data)
                 all_failed = False

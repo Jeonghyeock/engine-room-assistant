@@ -57,9 +57,9 @@ class FakeBox:
         return r.pop(0) if isinstance(r, list) else r
 
 
-def run(conv, question, llm, box, opts=None):
+def run(conv, question, llm, box, opts=None, **kw):
     async def go():
-        return [ev async for ev in run_turn(conv, question, box, opts or ChatOptions(), llm=llm)]
+        return [ev async for ev in run_turn(conv, question, box, opts or ChatOptions(), llm=llm, **kw)]
 
     return asyncio.run(go())
 
@@ -92,7 +92,7 @@ def test_numbering_is_per_conversation_across_turns():
     conv = Conversation()
     run(conv, "첫 질문", FakeLLM(calls(("search_docs", {"query": "a"})), answer("답 [1].")), box)
     llm = FakeLLM(calls(("search_docs", {"query": "b"})), answer("우회하면 안 된다 [2], [1]."))
-    events = run(conv, "우회해도 되나?", llm, box)
+    events = run(conv, "우회해도 되나?", llm, box, follow_up_search=False)  # 번호 매기기만 보려고 자동 검색은 끔
 
     # 같은 조각은 같은 번호, 새 조각은 다음 번호
     assert json.loads(llm.seen[1][-1]["content"])["results"][0]["n"] == 2
@@ -301,3 +301,40 @@ def test_partial_read_reaches_the_model_and_the_step_summary():
     events = run(Conversation(), "?", llm, box)
     assert [e.summary for e in events if isinstance(e, StepEnd)] == ["ME_LO_PRESS_IN 1.62bar · 모르는 태그 LO_TANK_LEVEL"]
     assert json.loads(llm.seen[1][-1]["content"])["unknown"] == [{"tag": "LO_TANK_LEVEL", "similar": ["LO_SUMP_LEVEL"]}]
+
+
+def test_follow_up_question_is_searched_first_with_the_current_alarms():
+    """8B 모델은 이어지는 질문에서 스스로 검색하지 않았다 — 에이전트가 질문 + 지금 알람 이름으로 먼저 찾는다."""
+    alarms = ToolResult(True, {"alarms": [{"tag": "ME_LO_PRESS_IN", "name": "주기관 윤활유 입구 압력"}]})
+    box = FakeBox({"list_active_alarms": alarms, "search_docs": [ToolResult(True, {"results": [CHUNK_44]}), ToolResult(True, {"results": [CHUNK_D]})]})
+    conv = Conversation()
+    run(conv, "알람 분석", FakeLLM(calls(("list_active_alarms", {}), ("search_docs", {"query": "a"})), answer("압력부터 [1].")), box)
+    llm = FakeLLM(answer("우회할 수 없다 [2]."))
+    events = run(conv, "트립을 우회해도 되나요?", llm, box)
+
+    first = events[0]
+    assert first == StepStart(3, "search_docs", {"query": "트립을 우회해도 되나요? (지금 알람: 주기관 윤활유 입구 압력)"}, auto=True)
+    # 모델은 자동 검색의 호출과 결과(새 번호 [2])를 본 뒤에 답한다
+    assert llm.seen[0][-2]["tool_calls"][0]["function"]["name"] == "search_docs"
+    assert json.loads(llm.seen[0][-1]["content"])["results"][0]["n"] == 2
+    assert [(c.n, c.verified) for c in events if isinstance(c, Citation)] == [(2, True)]
+
+
+def test_first_question_is_not_auto_searched_and_it_can_be_turned_off():
+    box = FakeBox({"search_docs": ToolResult(True, {"results": [CHUNK_44]})})
+    conv = Conversation()
+    events = run(conv, "첫 질문", FakeLLM(answer("답.")), box)
+    assert not any(isinstance(e, StepStart) for e in events)
+
+    async def go():
+        return [ev async for ev in run_turn(conv, "이어서", box, ChatOptions(), llm=FakeLLM(answer("답.")), follow_up_search=False)]
+
+    assert not any(isinstance(e, StepStart) for e in asyncio.run(go()))
+
+
+def test_failed_auto_search_leaves_the_question_to_the_model():
+    box = FakeBox({"search_docs": ToolResult(False, error="문서 색인이 없거나 손상됐다.")})
+    conv = Conversation()
+    run(conv, "첫 질문", FakeLLM(answer("답.")), box)
+    events = run(conv, "이어서", FakeLLM(answer("답할게요.")), box)
+    assert events[1] == StepEnd(1, False, "자동 검색 실패 · 문서 색인이 없거나 손상됐다.") and isinstance(events[-1], Done)
