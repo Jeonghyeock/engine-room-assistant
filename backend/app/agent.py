@@ -25,7 +25,9 @@ from app.prompts import DEFAULT as DEFAULT_PROMPT, PROMPTS
 from app.tools import ToolResult
 
 MAX_ROUNDS = 8  # 도구를 부르는 왕복 최대 횟수
-MAX_FAILED_ROUNDS = 3  # 부른 도구가 모두 실패한 왕복이 이만큼 이어지면 멈춘다(틀린 태그만 되풀이하는 경우)
+# 부른 도구가 모두 실패한 왕복이 이만큼 이어지면 멈춘다(틀린 태그만 되풀이하는 경우). read_sensors가 일부만 읽은 것은
+# 값을 받았으니 성공으로 센다 — 틀린 태그를 계속 섞어 불러도 그때마다 값은 받으며, 끝은 MAX_ROUNDS가 정한다.
+MAX_FAILED_ROUNDS = 3
 MAX_CITE_NUMBER = 99  # 이보다 큰 [숫자]는 인용으로 보지 않는다([2026] 같은 연도·값)
 MAX_RECHECKS = 2  # 근거 검사로 답을 되돌리는 최대 횟수
 
@@ -205,7 +207,7 @@ def find_citations(answer: str, conv: Conversation) -> list[Citation]:
 
 def _summary(name: str, res: ToolResult, numbered: list[dict] | None) -> str:
     if not res.ok:
-        return (res.error or "오류")[:120]
+        return (res.error or "오류")[:200]
     d = res.data or {}
     if name == "search_docs" and numbered is not None:
         ns = [r["n"] for r in numbered]

@@ -71,7 +71,7 @@ def create_server(scenario_id: str) -> MCPServer:
         rows, unknown = ams.read_known(tags)
         if not rows:  # 하나도 못 읽었으면 오류로 — 모델이 비슷한 태그나 list_tags로 고치게
             listed = "; ".join(f"{u['tag']}(비슷한 태그: {', '.join(u['similar']) or '없음'})" for u in unknown)
-            raise ToolError(f"모르는 태그만 있다: {listed}. list_tags로 태그 목록을 볼 수 있다.")
+            raise ToolError(f"읽을 수 있는 태그가 없다 — 모르는 태그: {listed}. list_tags로 태그 목록을 볼 수 있다.")
         return {"sensors": rows} | ({"unknown": unknown} if unknown else {})
 
     @tool

@@ -94,4 +94,4 @@ def test_mixed_tags_read_the_known_ones():
 
 def test_only_unknown_tags_is_still_an_error_with_hints():
     r = call(create_server("S2"), "read_sensors", {"tags": ["LO_PRESS", "LO_TANK_LEVEL"]})
-    assert r.is_error and "모르는 태그만 있다" in r.content[0].text and "ME_LO_PRESS_IN" in r.content[0].text
+    assert r.is_error and "읽을 수 있는 태그가 없다" in r.content[0].text and "ME_LO_PRESS_IN" in r.content[0].text

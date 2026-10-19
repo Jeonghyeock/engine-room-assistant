@@ -102,13 +102,6 @@ class AlarmMonitoringSystem:
             out.append(row)
         return out
 
-    def read_sensors(self, names: list[str] | str) -> list[dict]:
-        """모르는 태그가 하나라도 있으면 실패한다. MCP 도구는 read_known을 쓴다."""
-        rows, unknown = self.read_known(names)
-        if unknown:
-            raise UnknownTagError(unknown[0]["tag"], list(self.tags))
-        return rows
-
     def read_known(self, names: list[str] | str) -> tuple[list[dict], list[dict]]:
         """아는 태그는 읽고, 모르는 태그는 비슷한 태그와 함께 따로 돌려준다.
 
@@ -118,13 +111,15 @@ class AlarmMonitoringSystem:
         if isinstance(names, str):  # "ME_RPM"을 글자 단위로 돌지 않게
             names = [names]
         known: list[str] = []
-        unknown: list[dict] = []
+        unknown: dict[str, dict] = {}  # 대소문자·공백만 다른 같은 태그는 한 번만
         for raw in names:
             try:
                 known.append(self._canonical(raw))
             except UnknownTagError:
-                unknown.append({"tag": raw, "similar": similar_tags(raw, list(self.tags))})
-        return [self._row(name) for name in dict.fromkeys(known)], unknown  # 같은 태그는 한 번만
+                key = str(raw).strip().upper()
+                if key not in unknown:
+                    unknown[key] = {"tag": raw, "similar": similar_tags(raw, list(self.tags))}
+        return [self._row(name) for name in dict.fromkeys(known)], list(unknown.values())  # 같은 태그는 한 번만
 
     def _row(self, name: str) -> dict:
         tag = self.tags[name]

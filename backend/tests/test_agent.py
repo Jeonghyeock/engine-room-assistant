@@ -291,3 +291,13 @@ def test_token_round_counts_model_calls_so_a_redo_is_separate_from_its_draft():
     llm = FakeLLM(answer("지어낸 [3]."), answer("근거 없이 다시 [3]."), answer("마지막 [3]."))
     tokens = [e for e in run(Conversation(), "?", llm, FakeBox({})) if isinstance(e, Token)]
     assert sorted({t.round for t in tokens}) == [0, 1, 2]
+
+
+def test_partial_read_reaches_the_model_and_the_step_summary():
+    """일부만 읽힌 결과도 성공이고, 모르는 태그와 비슷한 태그가 모델에게 그대로 간다."""
+    data = {"sensors": [{"tag": "ME_LO_PRESS_IN", "value": 1.62, "unit": "bar"}], "unknown": [{"tag": "LO_TANK_LEVEL", "similar": ["LO_SUMP_LEVEL"]}]}
+    box = FakeBox({"read_sensors": ToolResult(True, data)})
+    llm = FakeLLM(calls(("read_sensors", {"tags": ["ME_LO_PRESS_IN", "LO_TANK_LEVEL"]})), answer("압력 1.62 bar."))
+    events = run(Conversation(), "?", llm, box)
+    assert [e.summary for e in events if isinstance(e, StepEnd)] == ["ME_LO_PRESS_IN 1.62bar · 모르는 태그 LO_TANK_LEVEL"]
+    assert json.loads(llm.seen[1][-1]["content"])["unknown"] == [{"tag": "LO_TANK_LEVEL", "similar": ["LO_SUMP_LEVEL"]}]

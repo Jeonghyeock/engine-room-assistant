@@ -38,23 +38,23 @@ def test_s3_slowdown_listed_before_alarm_with_same_onset(ams):
 
 
 def test_read_sensors_reports_status(ams):
-    cyl3, cyl4 = ams["S1"].read_sensors(["ME_EXH_TEMP_CYL3", "ME_EXH_TEMP_CYL4"])
+    cyl3, cyl4 = ams["S1"].read_known(["ME_EXH_TEMP_CYL3", "ME_EXH_TEMP_CYL4"])[0]
     assert cyl3["status"] == "경보" and cyl4["status"] == "정상"
     assert cyl3["unit"] == "°C" and cyl3["measure"] == [0, 600]
     # 상태 태그에는 status가 없다 — 펌프 "정지"가 알람 등급 "정지"로 읽히지 않게
-    pump = ams["S2"].read_sensors(["LO_PUMP2_STATE"])[0]
+    pump = ams["S2"].read_known(["LO_PUMP2_STATE"])[0][0]
     assert pump == {"tag": "LO_PUMP2_STATE", "name": "2번 윤활유 펌프 상태", "value": "대기"}
 
 
 def test_read_sensors_forgives_case_strings_and_duplicates(ams):
-    rows = ams["S2"].read_sensors([" me_lo_press_in", "ME_LO_PRESS_IN", "lo filter dp"])
+    rows, _ = ams["S2"].read_known([" me_lo_press_in", "ME_LO_PRESS_IN", "lo filter dp"])
     assert [r["tag"] for r in rows] == ["ME_LO_PRESS_IN", "LO_FILTER_DP"]
-    assert [r["tag"] for r in ams["S2"].read_sensors("ME_RPM")] == ["ME_RPM"]
+    assert [r["tag"] for r in ams["S2"].read_known("ME_RPM")[0]] == ["ME_RPM"]
 
 
 def test_unknown_tag_suggests_close_names(ams):
     with pytest.raises(UnknownTagError, match="ME_LO_PRESS_IN"):
-        ams["S2"].read_sensors(["ME_LO_PRESSURE_IN"])
+        ams["S2"].trend("ME_LO_PRESSURE_IN")
 
 
 def test_trend_summarises_window(ams):
@@ -111,3 +111,5 @@ def test_read_known_reads_what_it_can_and_lists_the_rest(ams):
     assert [r["tag"] for r in rows] == ["LO_FILTER_DP", "ME_LO_PRESS_IN"]
     assert [u["tag"] for u in unknown] == ["LO_PRESS_IN", "LO_TANK_LEVEL"]
     assert "ME_LO_PRESS_IN" in unknown[0]["similar"]
+    _, again = ams["S2"].read_known(["LO_TANK_LEVEL", " lo_tank_level"])
+    assert [u["tag"] for u in again] == ["LO_TANK_LEVEL"]  # 같은 모르는 태그는 한 번만
