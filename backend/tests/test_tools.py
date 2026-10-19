@@ -57,15 +57,16 @@ def test_scenario_argument_reaches_the_ams_server():
     assert {a["tag"] for a in asyncio.run(go()).data["alarms"]} == {"ME_JCW_TEMP_OUT"}
 
 
-def test_unknown_scenario_fails_to_open():
-    async def go():
-        async with ToolBox("S9"):
-            pass
-
-    with pytest.raises(Exception):
-        asyncio.run(go())
+def test_unknown_scenario_fails_before_launching_servers():
+    with pytest.raises(ValueError, match="모르는 시나리오 'S9'"):
+        ToolBox("S9")
 
 
 def test_clean_schema_drops_titles_only():
     s = {"title": "A", "type": "object", "properties": {"tag": {"title": "Tag", "type": "string", "description": "d"}}}
     assert _clean_schema(s) == {"type": "object", "properties": {"tag": {"type": "string", "description": "d"}}}
+
+
+def test_clean_schema_keeps_an_argument_named_title():
+    s = {"type": "object", "properties": {"title": {"title": "Title", "type": "string"}}, "required": ["title"]}
+    assert _clean_schema(s) == {"type": "object", "properties": {"title": {"type": "string"}}, "required": ["title"]}
