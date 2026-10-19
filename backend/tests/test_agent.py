@@ -1,0 +1,170 @@
+"""에이전트 루프 — 가짜 모델(정해 둔 응답을 차례로 냄)과 가짜 도구 상자로 확인한다. Ollama가 필요 없다."""
+
+import asyncio
+import json
+from contextlib import aclosing
+
+from app.agent import (
+    MAX_ROUNDS,
+    Citation,
+    Conversation,
+    Done,
+    Error,
+    StepEnd,
+    StepStart,
+    Token,
+    find_citations,
+    run_turn,
+)
+from app.llm import ChatOptions, Done as LLMDone, TextDelta, ToolCall, ToolCalls
+from app.tools import ToolResult
+
+CHUNK_44 = {"id": "manual:매뉴얼 4.4", "source": "manual", "locator": "매뉴얼 4.4", "title": "4.4 저압 감속·정지와 우회 금지", "text": "윤활유 저압 정지는 우회하지 않는다.", "score": 0.8}
+CHUNK_D = {"id": "cfr:§62.35-50(d)", "source": "cfr", "locator": "§62.35-50(d)", "title": "§62.35-50 …", "text": "(d) Override … must not be provided", "score": 0.6}
+
+
+def calls(*pairs):
+    return [ToolCalls([ToolCall(n, a) for n, a in pairs]), LLMDone(500, 20, 1.0, 0.0)]
+
+
+def answer(text, prompt=900):
+    return [TextDelta(t) for t in text.split(" ")[:1]] + [TextDelta(text[len(text.split(" ")[0]):])] + [LLMDone(prompt, 100, 2.0, 0.0)]
+
+
+class FakeLLM:
+    def __init__(self, *turns):
+        self.turns = list(turns)
+        self.seen = []  # 모델이 본 메시지(호출마다)
+
+    async def __call__(self, messages, tools, opts):
+        self.seen.append(json.loads(json.dumps(messages, ensure_ascii=False)))
+        for ev in self.turns.pop(0):
+            yield ev
+
+
+class FakeBox:
+    def __init__(self, results):
+        self.results = results  # 도구 이름 → ToolResult 또는 그 목록(차례로)
+        self.called = []
+
+    def ollama_tools(self):
+        return [{"type": "function", "function": {"name": n}} for n in self.results]
+
+    async def call(self, name, arguments):
+        self.called.append((name, arguments))
+        r = self.results[name]
+        return r.pop(0) if isinstance(r, list) else r
+
+
+def run(conv, question, llm, box, opts=None):
+    async def go():
+        return [ev async for ev in run_turn(conv, question, box, opts or ChatOptions(), llm=llm)]
+
+    return asyncio.run(go())
+
+
+def test_tool_round_then_answer_with_numbered_citation():
+    box = FakeBox({"list_active_alarms": ToolResult(True, {"alarms": [{"tag": "ME_LO_PRESS_IN"}]}), "search_docs": ToolResult(True, {"results": [CHUNK_44]})})
+    llm = FakeLLM(
+        calls(("list_active_alarms", {}), ("search_docs", {"query": "윤활유 저압", "source": "manual"})),
+        answer("감속 상태에서 압력을 회복하는 것이 먼저다 [1]."),
+    )
+    conv = Conversation()
+    events = run(conv, "알람 분석", llm, box)
+
+    kinds = [type(e).__name__ for e in events]
+    assert kinds == ["StepStart", "StepEnd", "StepStart", "StepEnd", "Token", "Token", "Citation", "Done"]
+    assert events[3] == StepEnd(2, True, "조각 1개 [1]")
+    cite = events[6]
+    assert cite == Citation(1, "manual:매뉴얼 4.4", "manual", "매뉴얼 4.4", CHUNK_44["title"], CHUNK_44["text"], True)
+    done = events[-1]
+    assert done.rounds == 1 and done.tokens == 120 and done.max_prompt_tokens == 900
+
+    # 모델은 번호만 보고 조각 id·점수는 보지 않는다
+    tool_msg = llm.seen[1][-1]
+    assert tool_msg["role"] == "tool" and tool_msg["tool_name"] == "search_docs"
+    assert json.loads(tool_msg["content"]) == {"results": [{"n": 1, "source": "manual", "locator": "매뉴얼 4.4", "title": CHUNK_44["title"], "text": CHUNK_44["text"]}]}
+
+
+def test_numbering_is_per_conversation_across_turns():
+    box = FakeBox({"search_docs": [ToolResult(True, {"results": [CHUNK_44]}), ToolResult(True, {"results": [CHUNK_D, CHUNK_44]})]})
+    conv = Conversation()
+    run(conv, "첫 질문", FakeLLM(calls(("search_docs", {"query": "a"})), answer("답 [1].")), box)
+    llm = FakeLLM(calls(("search_docs", {"query": "b"})), answer("우회하면 안 된다 [2], [1]."))
+    events = run(conv, "우회해도 되나?", llm, box)
+
+    # 같은 조각은 같은 번호, 새 조각은 다음 번호
+    assert json.loads(llm.seen[1][-1]["content"])["results"][0]["n"] == 2
+    assert json.loads(llm.seen[1][-1]["content"])["results"][1]["n"] == 1
+    assert [(c.n, c.verified) for c in events if isinstance(c, Citation)] == [(2, True), (1, True)]
+    # 앞 차례의 대화가 그대로 이어진다(시스템 + 질문·도구·답 + 새 질문)
+    assert [m["role"] for m in llm.seen[0]][:2] == ["system", "user"] and llm.seen[0][-1]["content"] == "우회해도 되나?"
+
+
+def test_citations_by_number_and_by_locator():
+    conv = Conversation()
+    conv.number([CHUNK_44, CHUNK_D])
+    cites = find_citations("압력부터 [1][7]. 규정 §62.35-50(d)와 매뉴얼 4.4, 그리고 §62.30-1(b).", conv)
+    assert [(c.n, c.locator, c.verified) for c in cites] == [
+        (1, "매뉴얼 4.4", True),
+        (7, "[7]", False),  # 검색된 적 없는 번호
+        (2, "§62.35-50(d)", True),  # 번호 대신 위치로 쓴 인용도 검색된 조각이면 확인됨
+        (None, "§62.30-1(b)", False),  # 검색된 적 없는 위치
+    ]  # 매뉴얼 4.4는 [1]로 이미 인용해 한 번만
+
+
+def test_tool_error_goes_back_to_the_model_and_it_retries():
+    box = FakeBox({"read_sensors": [ToolResult(False, error="모르는 태그 'LO_PRESS'. 비슷한 태그: ME_LO_PRESS_IN."), ToolResult(True, {"sensors": [{"tag": "ME_LO_PRESS_IN", "value": 1.62, "unit": "bar"}]})]})
+    llm = FakeLLM(calls(("read_sensors", {"tags": ["LO_PRESS"]})), calls(("read_sensors", {"tags": ["ME_LO_PRESS_IN"]})), answer("압력은 1.62 bar다."))
+    events = run(Conversation(), "압력?", llm, box)
+    assert [e.ok for e in events if isinstance(e, StepEnd)] == [False, True]
+    assert "비슷한 태그" in json.loads(llm.seen[1][-1]["content"])["error"]
+    assert isinstance(events[-1], Done) and events[-1].rounds == 2
+
+
+def test_stops_after_three_tool_errors_in_a_row():
+    box = FakeBox({"read_sensors": ToolResult(False, error="모르는 태그")})
+    llm = FakeLLM(*[calls(("read_sensors", {"tags": ["X"]}))] * 3)
+    events = run(Conversation(), "?", llm, box)
+    assert events[-1] == Error("tool_errors", "도구 오류가 3번 이어져 멈췄다.")
+
+
+def test_stops_after_too_many_rounds():
+    box = FakeBox({"list_tags": ToolResult(True, {"tags": []})})
+    llm = FakeLLM(*[calls(("list_tags", {}))] * (MAX_ROUNDS + 1))
+    events = run(Conversation(), "?", llm, box)
+    assert isinstance(events[-1], Error) and events[-1].code == "too_many_steps"
+    assert sum(isinstance(e, StepStart) for e in events) == MAX_ROUNDS
+
+
+def test_context_near_limit_is_reported():
+    events = run(Conversation(), "?", FakeLLM(answer("답.", prompt=7500)), FakeBox({}), ChatOptions(num_ctx=8192))
+    assert events[-1].context_near_limit
+    events = run(Conversation(), "?", FakeLLM(answer("답.", prompt=3000)), FakeBox({}), ChatOptions(num_ctx=8192))
+    assert not events[-1].context_near_limit
+
+
+def test_tokens_stream_before_the_answer_is_complete():
+    events = run(Conversation(), "?", FakeLLM(answer("압력이 낮다 원인은 필터다.")), FakeBox({}))
+    assert "".join(e.text for e in events if isinstance(e, Token)) == "압력이 낮다 원인은 필터다."
+
+
+def test_stopping_early_closes_the_model_stream():
+    """화면의 중단 버튼처럼 에이전트를 중간에 그만 읽으면 모델 스트림도 닫혀야 Ollama가 생성을 멈춘다."""
+    closed = []
+
+    async def llm(messages, tools, opts):
+        try:
+            yield TextDelta("한 ")
+            yield TextDelta("글자씩")
+            yield LLMDone(10, 2, 1.0, 0.0)
+        finally:
+            closed.append(True)
+
+    async def go():
+        async with aclosing(run_turn(Conversation(), "?", FakeBox({}), ChatOptions(), llm=llm)) as events:
+            async for ev in events:
+                break  # 첫 글자만 받고 중단
+
+    asyncio.run(go())
+    assert closed == [True]
