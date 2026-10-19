@@ -25,7 +25,7 @@ from app.prompts import DEFAULT as DEFAULT_PROMPT
 from app.tools import ToolBox
 
 HERE = Path(__file__).resolve().parent
-SEEDS = [1, 2, 3]
+SEEDS = [1, 2, 3, 4, 5]  # 3번은 칸마다 흔들림이 컸다(PR #12 리뷰) — 결론은 경향으로 읽는다
 EVAL_TEMPERATURE = 0.7
 CHECKS = ["답함", "도구", "도구 인자", "인용 있음", "미확인 인용 없음", "필수 근거", "문맥 여유", "잘리지 않음"]
 
@@ -50,6 +50,20 @@ def _covers(loc: str, want: str) -> bool:
     return loc == want or loc.startswith(want + "(")
 
 
+def _arg_ok(args: dict, want: dict) -> bool:
+    """인자 하나가 기대와 맞는지. value: 같아야 함(대소문자 무시). where: 여러 인자가 모두 같아야 함.
+    min: 숫자가 이상이어야 함 — 인자를 안 줬으면 도구 기본값(default)으로 본다."""
+    if "where" in want and any(str(args.get(k, "")).upper() != str(v).upper() for k, v in want["where"].items()):
+        return False
+    if "value" in want and str(args.get(want["arg"], "")).upper() != str(want["value"]).upper():
+        return False
+    if "min" in want:
+        v = args.get(want["arg"], want.get("default"))
+        if not isinstance(v, (int, float)) or v < want["min"]:
+            return False
+    return True
+
+
 def check(turn: Turn, expect: dict) -> dict[str, bool]:
     """정해진 검사. 기대하지 않은 항목은 통과로 둔다(표에서 칸이 빠지지 않게)."""
     called = [s["tool"] for s in turn.steps]
@@ -57,10 +71,7 @@ def check(turn: Turn, expect: dict) -> dict[str, bool]:
     return {
         "답함": turn.done is not None and turn.error is None and bool(turn.answer.strip()),
         "도구": all(t in called for t in expect.get("tools", [])) and (not expect.get("tools_any") or any(t in called for t in expect["tools_any"])),
-        "도구 인자": all(
-            any(s["tool"] == w["tool"] and str(s["args"].get(w["arg"], "")).upper() == w["value"] for s in turn.steps)
-            for w in expect.get("tool_args", [])
-        ),
+        "도구 인자": all(any(s["tool"] == w["tool"] and _arg_ok(s["args"], w) for s in turn.steps) for w in expect.get("tool_args", [])),
         "인용 있음": bool(verified),
         "미확인 인용 없음": not any(not c.verified for c in turn.citations),
         "필수 근거": not expect.get("cite_any") or any(_covers(c.locator, w) for c in verified for w in expect["cite_any"]),
