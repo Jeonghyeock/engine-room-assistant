@@ -18,6 +18,7 @@ async def main(scenario: str, questions: list[str], opts: ChatOptions) -> int:
     async with ToolBox(scenario) as box:
         for q in questions:
             print(f"\n## 질문: {q}\n", flush=True)
+            last_round = 0
             async for ev in run_turn(conv, q, box, opts):
                 match ev:
                     case StepStart():
@@ -25,6 +26,9 @@ async def main(scenario: str, questions: list[str], opts: ChatOptions) -> int:
                     case StepEnd():
                         print(f"    {'✓' if ev.ok else '✗'} {ev.summary}", flush=True)
                     case Token():
+                        if ev.round != last_round:  # 도구를 부르기 전의 짧은 말과 답을 줄로 가른다
+                            print(flush=True)
+                            last_round = ev.round
                         print(ev.text, end="", flush=True)
                     case Citation() if ev.verified:
                         print(f"\n  [{ev.n}] {ev.locator} — {ev.title}", end="")

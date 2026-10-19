@@ -16,7 +16,7 @@ from app.agent import (
     find_citations,
     run_turn,
 )
-from app.llm import ChatOptions, Done as LLMDone, TextDelta, ToolCall, ToolCalls
+from app.llm import ChatOptions, Done as LLMDone, LLMError, TextDelta, ToolCall, ToolCalls
 from app.tools import ToolResult
 
 CHUNK_44 = {"id": "manual:매뉴얼 4.4", "source": "manual", "locator": "매뉴얼 4.4", "title": "4.4 저압 감속·정지와 우회 금지", "text": "윤활유 저압 정지는 우회하지 않는다.", "score": 0.8}
@@ -101,6 +101,32 @@ def test_numbering_is_per_conversation_across_turns():
     assert [m["role"] for m in llm.seen[0]][:2] == ["system", "user"] and llm.seen[0][-1]["content"] == "우회해도 되나?"
 
 
+def test_answer_cut_by_num_predict_is_marked():
+    llm = FakeLLM([TextDelta("길게 쓰다가"), LLMDone(1000, 2048, 60.0, 0.0, reason="length")])
+    assert run(Conversation(), "?", llm, FakeBox({}))[-1].truncated
+
+
+def test_preamble_and_answer_tokens_carry_their_round():
+    box = FakeBox({"list_active_alarms": ToolResult(True, {"alarms": []})})
+    llm = FakeLLM([TextDelta("확인해 보겠습니다."), ToolCalls([ToolCall("list_active_alarms", {})]), LLMDone(100, 5, 1.0, 0.0)], answer("알람 없음."))
+    tokens = [e for e in run(Conversation(), "?", llm, box) if isinstance(e, Token)]
+    assert tokens[0] == Token("확인해 보겠습니다.", 0) and {t.round for t in tokens[1:]} == {1}
+
+
+def test_shared_locator_and_unusual_citation_forms():
+    conv = Conversation()
+    rows = [{**CHUNK_44, "id": f"manual:매뉴얼 2.1#{i}", "locator": "매뉴얼 2.1", "title": f"2.1 설정값 표 — 행{i}"} for i in (1, 2)]
+    table = {**CHUNK_D, "id": "cfr:§62.35-50 표 1#3", "locator": "§62.35-50 표 1"}
+    conv.number(rows + [CHUNK_D, table])  # [1][2] 표 행, [3] (d), [4] 표 1
+    cites = find_citations("압력 [1]. 매뉴얼 2.1 참조. 【3】과 [2-3]. 46 CFR 62.35-50(d)(1), §62.35-50 표 1. 2026년 [2026], 매뉴얼 4장.", conv)
+    assert [(c.n, c.locator, c.verified) for c in cites] == [
+        (1, "매뉴얼 2.1", True),  # 매뉴얼 2.1 언급은 [1]과 같은 위치라 다시 내지 않는다
+        (3, "§62.35-50(d)", True),  # 【3】, 그리고 (d)(1)은 검색된 (d) 안의 하위 문단
+        (2, "매뉴얼 2.1", True),  # [2-3] 범위
+        (4, "§62.35-50 표 1", True),
+    ]  # [2026]과 "매뉴얼 4장"은 인용이 아니다
+
+
 def test_citations_by_number_and_by_locator():
     conv = Conversation()
     conv.number([CHUNK_44, CHUNK_D])
@@ -122,11 +148,38 @@ def test_tool_error_goes_back_to_the_model_and_it_retries():
     assert isinstance(events[-1], Done) and events[-1].rounds == 2
 
 
-def test_stops_after_three_tool_errors_in_a_row():
+def test_stops_after_three_failed_rounds_in_a_row():
     box = FakeBox({"read_sensors": ToolResult(False, error="모르는 태그")})
     llm = FakeLLM(*[calls(("read_sensors", {"tags": ["X"]}))] * 3)
     events = run(Conversation(), "?", llm, box)
-    assert events[-1] == Error("tool_errors", "도구 오류가 3번 이어져 멈췄다.")
+    assert events[-1] == Error("tool_errors", "부른 도구가 모두 실패한 왕복이 3번 이어져 멈췄다.")
+
+
+def test_several_failures_in_one_round_count_once_so_the_model_can_fix_them():
+    """리뷰: 한 왕복에서 도구 3개가 모두 실패하면 모델이 오류를 보기도 전에 멈췄다."""
+    box = FakeBox({"read_sensors": [ToolResult(False, error="모르는 태그")] * 3 + [ToolResult(True, {"sensors": []})]})
+    llm = FakeLLM(calls(*[("read_sensors", {"tags": ["X"]})] * 3), calls(("read_sensors", {"tags": ["ME_RPM"]})), answer("답."))
+    events = run(Conversation(), "?", llm, box)
+    assert isinstance(events[-1], Done) and events[-1].rounds == 2
+    assert sum(m["role"] == "tool" and "error" in m["content"] for m in llm.seen[1]) == 3  # 모델이 오류 셋을 봤다
+
+
+def test_failed_turn_is_rolled_back_so_the_next_question_starts_clean():
+    box = FakeBox({"list_tags": ToolResult(True, {"tags": []})})
+    conv = Conversation()
+    run(conv, "첫 질문", FakeLLM(*[calls(("list_tags", {}))] * (MAX_ROUNDS + 1)), box)
+    assert [m["role"] for m in conv.messages] == ["system"]  # tool_calls만 남은 assistant 메시지 같은 것이 없다
+
+
+def test_model_failure_becomes_an_error_event():
+    async def broken(messages, tools, opts):
+        raise LLMError("Ollama(http://x)가 120초 동안 답하지 않았다")
+        yield  # noqa — 생성기로 만들기 위함
+
+    conv = Conversation()
+    events = run(conv, "?", broken, FakeBox({}))
+    assert events == [Error("llm", "Ollama(http://x)가 120초 동안 답하지 않았다")]
+    assert [m["role"] for m in conv.messages] == ["system"]
 
 
 def test_stops_after_too_many_rounds():
