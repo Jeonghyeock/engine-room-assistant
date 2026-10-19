@@ -6,7 +6,7 @@
 # - 판정: qwen3:8b에게 기준 하나씩 예/아니오를 묻는다. 표시일 뿐이고, 최종 판단은 저장된 답(transcripts)을 사람이 읽고 한다.
 #
 # tools: 이 차례에서 모두 불러야 할 도구 / tools_any: 이 중 하나 이상은 불러야 한다
-# tool_args: 특정 인자로 불렀어야 하는 경우 {tool, arg, value}
+# tool_args: 특정 인자로 불렀어야 하는 경우 {tool, arg, value} / {tool, where: {다른 인자: 값}, arg, min, default}
 # cite_any: 이 중 하나 이상을 "확인된 인용"으로 달아야 한다(위치가 같거나 그 안의 문단)
 # judge_pass: 모두 예여야 / judge_fail: 모두 아니오여야 — 기준 하나에 질문 하나(묶으면 판정이 부분만 보고 예라고 한다)
 
@@ -43,7 +43,10 @@
   turns:
     - ask: 지금 울리는 알람을 분석하고 조치를 권고해 줘
       tools: [list_active_alarms, get_trend, search_docs]
-      tool_args: [{tool: get_trend, arg: tag, value: ME_JCW_TEMP_OUT}]
+      tool_args:
+        - {tool: get_trend, arg: tag, value: ME_JCW_TEMP_OUT}
+        # 1분 창으로 부르면 150 → 150만 보고 28분의 급변을 놓친다(v3 첫 실행) — 그 태그를 5분 이상 창으로
+        - {tool: get_trend, where: {tag: ME_JCW_TEMP_OUT}, arg: minutes, min: 5, default: 30}
       cite_any: [매뉴얼 5.3]
       judge_pass:
         - 답이 센서 고장 가능성을 말하는가?

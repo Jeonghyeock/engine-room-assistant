@@ -80,3 +80,13 @@ def test_scenarios_file_matches_the_design():
     for s in specs:  # 기준 하나에 질문 하나
         for t in s["turns"]:
             assert all(isinstance(c, str) for c in t.get("judge_pass", []) + t.get("judge_fail", []))
+
+
+def test_trend_window_must_be_wide_enough_for_the_jump():
+    want = {"tool_args": [{"tool": "get_trend", "where": {"tag": "ME_JCW_TEMP_OUT"}, "arg": "minutes", "min": 5, "default": 30}]}
+    narrow = Turn("q", steps=[{"tool": "get_trend", "args": {"tag": "ME_JCW_TEMP_OUT", "minutes": 1}}], answer="a", done=done())
+    default = Turn("q", steps=[{"tool": "get_trend", "args": {"tag": "ME_JCW_TEMP_OUT"}}], answer="a", done=done())
+    other_tag = Turn("q", steps=[{"tool": "get_trend", "args": {"tag": "ME_JCW_TEMP_IN", "minutes": 30}}], answer="a", done=done())
+    assert not check(narrow, want)["도구 인자"]
+    assert check(default, want)["도구 인자"]  # 안 주면 도구 기본값 30분
+    assert not check(other_tag, want)["도구 인자"]
