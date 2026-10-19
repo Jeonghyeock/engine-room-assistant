@@ -21,11 +21,15 @@ from ams.scenario import TAGS, Scenario, load_tags
 LEVELS = [("shutdown", "정지"), ("slowdown", "감속"), ("alarm", "경보")]
 
 
+def similar_tags(name: str, known: list[str]) -> list[str]:
+    return difflib.get_close_matches(str(name).upper(), known, n=3, cutoff=0.5)
+
+
 class UnknownTagError(ValueError):
     """모르는 태그. 모델이 스스로 고칠 수 있게 비슷한 태그를 함께 알려 준다."""
 
     def __init__(self, name: str, known: list[str]):
-        close = difflib.get_close_matches(str(name).upper(), known, n=3, cutoff=0.5)
+        close = similar_tags(name, known)
         hint = f" 비슷한 태그: {', '.join(close)}." if close else " list_tags로 태그 목록을 볼 수 있다."
         super().__init__(f"모르는 태그 {name!r}.{hint}")
 
@@ -99,17 +103,36 @@ class AlarmMonitoringSystem:
         return out
 
     def read_sensors(self, names: list[str] | str) -> list[dict]:
+        """모르는 태그가 하나라도 있으면 실패한다. MCP 도구는 read_known을 쓴다."""
+        rows, unknown = self.read_known(names)
+        if unknown:
+            raise UnknownTagError(unknown[0]["tag"], list(self.tags))
+        return rows
+
+    def read_known(self, names: list[str] | str) -> tuple[list[dict], list[dict]]:
+        """아는 태그는 읽고, 모르는 태그는 비슷한 태그와 함께 따로 돌려준다.
+
+        모르는 태그 하나에 호출 전체가 실패하면, 관련 값을 짐작해 여럿 읽으려던 모델이 틀린 태그를 하나씩 빼며
+        실패를 되풀이하다 멈췄다(평가 S2) — 한 번에 무엇이 틀렸는지 다 알려 준다.
+        """
         if isinstance(names, str):  # "ME_RPM"을 글자 단위로 돌지 않게
             names = [names]
-        out = []
-        for name in dict.fromkeys(self._canonical(n) for n in names):  # 같은 태그는 한 번만
-            tag = self.tags[name]
-            value = self.scenario.series[name][-1]
-            row = {"tag": name, "name": tag["name"], "value": value}
-            if "states" not in tag:
-                row |= {"status": self._status(name, value), "unit": tag["unit"], "normal": tag["normal"], "measure": tag["measure"]}
-            out.append(row)
-        return out
+        known: list[str] = []
+        unknown: list[dict] = []
+        for raw in names:
+            try:
+                known.append(self._canonical(raw))
+            except UnknownTagError:
+                unknown.append({"tag": raw, "similar": similar_tags(raw, list(self.tags))})
+        return [self._row(name) for name in dict.fromkeys(known)], unknown  # 같은 태그는 한 번만
+
+    def _row(self, name: str) -> dict:
+        tag = self.tags[name]
+        value = self.scenario.series[name][-1]
+        row = {"tag": name, "name": tag["name"], "value": value}
+        if "states" not in tag:
+            row |= {"status": self._status(name, value), "unit": tag["unit"], "normal": tag["normal"], "measure": tag["measure"]}
+        return row
 
     def active_alarms(self) -> list[dict]:
         s = self.scenario

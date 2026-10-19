@@ -103,3 +103,11 @@ def test_alarm_through_whole_window_has_no_made_up_onset():
     dp, press = alarms
     assert dp["tag"] == "LO_FILTER_DP" and dp["since"] is None and dp["minutes_ago"] is None and "30분 내내" in dp["since_note"]
     assert press["minutes_ago"] == 5  # 기록 안에서 뜬 알람은 시각이 있다
+
+
+def test_read_known_reads_what_it_can_and_lists_the_rest(ams):
+    """평가: 짐작한 태그 셋을 섞어 읽다 하나씩 빼며 실패를 되풀이해 멈췄다 — 한 번에 다 알려 준다."""
+    rows, unknown = ams["S2"].read_known(["LO_FILTER_DP", "LO_PRESS_IN", "ME_LO_PRESS_IN", "LO_TANK_LEVEL"])
+    assert [r["tag"] for r in rows] == ["LO_FILTER_DP", "ME_LO_PRESS_IN"]
+    assert [u["tag"] for u in unknown] == ["LO_PRESS_IN", "LO_TANK_LEVEL"]
+    assert "ME_LO_PRESS_IN" in unknown[0]["similar"]

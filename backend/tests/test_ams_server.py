@@ -83,3 +83,15 @@ def test_bad_scenario_from_env_is_rejected_cleanly():
     env = {**os.environ, "AMS_SCENARIO": "S9", "PYTHONUTF8": "1"}
     p = subprocess.run([sys.executable, "-m", "mcp_servers.ams_server"], cwd=BACKEND, env=env, capture_output=True, text=True, timeout=60)
     assert p.returncode == 2 and "모르는 시나리오" in p.stderr and "Traceback" not in p.stderr
+
+
+def test_mixed_tags_read_the_known_ones():
+    r = call(create_server("S2"), "read_sensors", {"tags": ["ME_LO_PRESS_IN", "LO_TANK_LEVEL"]})
+    assert not r.is_error
+    assert [s["tag"] for s in r.structured_content["sensors"]] == ["ME_LO_PRESS_IN"]
+    assert r.structured_content["unknown"][0]["tag"] == "LO_TANK_LEVEL"
+
+
+def test_only_unknown_tags_is_still_an_error_with_hints():
+    r = call(create_server("S2"), "read_sensors", {"tags": ["LO_PRESS", "LO_TANK_LEVEL"]})
+    assert r.is_error and "모르는 태그만 있다" in r.content[0].text and "ME_LO_PRESS_IN" in r.content[0].text
