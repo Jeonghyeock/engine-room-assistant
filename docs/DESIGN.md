@@ -133,22 +133,28 @@
    - 왜 메시지까지: 남기면 다음 질문이 깨진 기록을 이어받는다.
    - 왜 조각까지: 남기면 기록에 없는 번호를 인용해도 확인됨이 된다.
 
-### 6.5 API와 스트리밍 계약 — 초안(4단계에서 다시 본다)
+### 6.5 API와 스트리밍 계약 (4단계에서 확정, `app/api.py`)
 
 - `POST /api/chat` `{ conversation_id?, message }` → `text/event-stream`
   - EventSource는 GET만 되므로, 화면은 `fetch`로 스트림을 읽는다.
+  - 첫 이벤트는 `conversation` `{ id, scenario }`다. 새 대화의 번호를 화면이 알아야 이어지는 질문에 실어 보낸다(초안에는 빠져 있었다).
+  - 한 번에 한 차례만 돈다(GPU 하나에 모델 하나). 돌고 있으면 409. 모르는 대화 번호는 404. 시나리오 바꾸기에 실패해 도구 상자가 없으면 503.
+  - 화면이 스트림을 끊으면(중단 버튼) 그 차례는 되돌린다(6.4-9). 차례는 응답과 다른 태스크에서 돌리고, 끊기면 그 태스크를 한 번 취소한 뒤 정리가 끝나야 다음 질문을 받는다 — 응답 태스크에서 돌리면 Starlette의 취소가 정리하는 `await`까지 끊었다.
+  - 대화는 서버 메모리에만 둔다.
 
 | 이벤트 | 데이터 | 언제 |
 |---|---|---|
+| `conversation` | `{ id, scenario }` | 스트림의 첫 이벤트 |
 | `step_start` | `{ id, tool, args, auto }` | 도구 호출 시작. `tool: "check_citations"`는 도구가 아니라 근거 검사(6.4-7)를 단계로 보여 주는 것. `auto`는 모델이 아니라 에이전트가 부른 단계(6.4-8) |
 | `step_end` | `{ id, ok, summary }` | 도구 결과(요약) |
 | `token` | `{ text, round }` | 답변 글자 조각. `round`는 차례 안의 모델 호출 번호 — 도구 전 짧은 말·되돌린 초안과 마지막 답을 가른다 |
 | `citation` | `{ n, chunk_id, source, locator, title, snippet, verified }` | 답에 인용이 나올 때 |
-| `done` | `{ tokens, tok_per_s, elapsed_ms, rounds, rechecks, model_calls, max_prompt_tokens, num_ctx, truncated }` | 끝. `rounds`는 모델이 부른 도구 왕복만 센다(자동 검색 제외). `truncated`는 답이 `num_predict`에서 잘렸다는 뜻이다. 문맥은 따로 본다 — `max_prompt_tokens`가 `num_ctx`의 90% 이상이면 오래된 대화가 잘렸을 수 있다(에이전트의 `context_near_limit`) |
-| `error` | `{ code, message }` | 실패 |
+| `done` | `{ tokens, tok_per_s, elapsed_ms, rounds, rechecks, model_calls, max_prompt_tokens, num_ctx, truncated, context_near_limit }` | 끝. `rounds`는 모델이 부른 도구 왕복만 센다(자동 검색 제외). `truncated`는 답이 `num_predict`에서 잘렸다는 뜻이다. 문맥은 따로 본다 — `context_near_limit`는 `max_prompt_tokens`가 `num_ctx`의 90% 이상이라 오래된 대화가 잘렸을 수 있다는 뜻 |
+| `error` | `{ code, message }` | 실패. 에이전트의 `llm`·`too_many_steps`·`tool_errors`와, `busy`(다른 차례가 먼저 시작), `no_tools`(도구 상자가 없음 — 바꾸기 실패 뒤), `internal`(프로그램 오류) |
 
-- `GET /api/alarms` — 화면 위쪽 알람 목록(백엔드가 MCP ①을 부른다)
-- `GET /api/scenarios`, `POST /api/scenarios/{id}/start` — 시연용 시나리오 바꾸기(ams 서버를 그 시나리오로 다시 띄움)
+- `GET /api/alarms` → `{ scenario, alarms }` — 화면 왼쪽 알람 목록(백엔드가 MCP ①을 부른다)
+- `GET /api/scenarios` → `{ current, scenarios: [{ id, title, summary }] }`
+- `POST /api/scenarios/{id}/start` → `{ current }` — 시연용 시나리오 바꾸기. ams 서버를 그 시나리오로 다시 띄우고(`app/host.py`, 도구 상자는 주인 태스크 하나가 여닫는다) 대화를 모두 지운다. 돌고 있는 차례가 있으면 409
 
 ### 6.6 화면 (React + Vite + TypeScript)
 
@@ -231,7 +237,7 @@ engine-room-assistant/
 
 ## 10. 정한 것 (2026-10-16, 권장안)
 
-1. SSE 이벤트 계약은 6.5 초안대로 간다. 4단계에서 화면을 붙이며 다시 본다.
+1. SSE 이벤트 계약은 6.5 초안대로 간다. 4단계에서 다시 보고 첫 이벤트 `conversation`을 더했다(6.5).
 2. MCP 서버는 둘(ams, docs)로 나눈다.
 3. 레포 이름은 `engine-room-assistant`.
 4. 시나리오는 3장의 S1~S3.
