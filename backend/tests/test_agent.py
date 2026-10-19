@@ -264,7 +264,7 @@ def test_prompt_version_is_chosen_per_conversation():
     from app.prompts import PROMPTS
 
     assert Conversation(prompt="v1").messages[0]["content"] == PROMPTS["v1"]
-    assert Conversation().messages[0]["content"] == PROMPTS["v3"]
+    assert Conversation().messages[0]["content"] == PROMPTS["v4"]
 
 
 def test_rejected_draft_and_note_leave_the_history_once_the_answer_is_accepted():
