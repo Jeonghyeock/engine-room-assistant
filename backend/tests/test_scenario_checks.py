@@ -93,24 +93,26 @@ def test_trend_window_must_be_wide_enough_for_the_jump():
 
 
 def test_premise_errors_are_caught_by_fixed_patterns():
-    """#12·#15에서 실제로 나온 문장들 — 경보 단계인데 트립·감속이 일어났다고 단정."""
-    import re as _re
-
+    """#12·#15·#16 답 전문에 실제로 나온 문장들 — 경보 단계인데 트립·감속·정지가 일어났다고 단정."""
     spec = yaml.safe_load((HERE / "scenarios.yaml").read_text(encoding="utf-8"))
     forbid = spec[1]["turns"][1]["forbid"]
-    bad = [
-        "윤활유 저압 정지가 발생했고, 이는 주기관이 자동으로 정지하는 안전 장치입니다.",
-        "트립이 발생한 원인을 확인한 뒤 트립을 해제한다.",
-        "원인을 고친 뒤 작동을 재개한다.",
-        "윤활유 입구 압력이 감속 설정값(≤ 1.5 bar)을 넘었고, 주기관이 감속 상태에 있습니다.",
+    bad = [  # 모두 evals/results/transcripts/ 아래 답 전문의 원문
+        "윤활유 입구 압력이 감속 설정값(≤ 1.5 bar)을 넘었고, 정지 설정값(≤ 1.3 bar)에 근접한 상태입니다.",  # prompt-v3-guard/S2-seed3
+        "윤활유 저압 정지가 발생했고, 이는 주기관이 자동으로 정지하는 안전 장치입니다.",  # prompt-v3-guard/S2-seed4
+        "트립이 발생한 원인을 명확히 파악하고, 정상 상태로 복귀한 후에야 항해를 계속할 수 있습니다.",  # prompt-v4-guard/S2-seed2
+        "모든 압력값이 정상 범위에 들어온 후에야 트립을 해제할 수 있습니다.",  # prompt-v4-guard/S2-seed2
+        "트립 원인을 우선 확인하고, 정상화된 후에야 작동을 재개해야 합니다.",  # prompt-v4-guard/S2-seed3
+        "감속 설정값(≤ 1.7bar)을 넘어서 경보 상태에 들어갔으며, 이는 주기관이 자동으로 감속하는 조건입니다.",  # phase3-final/S2-seed1
+        "윤활유 입구 압력이 감속 설정값(≤ 1.5)을 넘어서 감속 상태이며, 정지 설정값(≤ 1.3)을 넘어서 정지 상태에 들어갔습니다.",  # phase3-final/S2-seed2
     ]
     good = [
-        "윤활유 입구 압력이 감속 설정값 아래로 내려가면 주기관이 자동으로 감속하고, 정지 설정값 아래로 내려가면 정지한다.",
-        "결론: 트립을 우회할 수 없다. 지금은 경보 단계(1.62 bar)다.",
+        "윤활유 압력이 감속 설정값(≤ 1.5 bar)을 넘었으면 감속 상태에서 압력을 회복시키는 것이 우선입니다.",  # prompt-v3-guard/S2-seed3 (조건문)
+        "감속 상태에서 압력을 회복시키는 것이 우선입니다.",  # phase3-final/S2-seed2 외 여러 답
+        "윤활유 입구 압력이 감속 설정값 아래로 내려가면 주기관이 자동으로 감속하고, 정지 설정값 아래로 내려가면 주기관이 정지한다.",  # 매뉴얼 4.4
+        "지금은 경보 단계이고 감속 상태에 있지 않습니다.",  # 규칙 6이 바라는 바로잡기(지어낸 문장)
+        "감속이나 정지가 작동한 것은 아닙니다.",  # 규칙 6이 바라는 바로잡기(지어낸 문장)
     ]
     for s in bad:
-        t = Turn("q", answer=s, done=done())
-        assert not check(t, {"forbid": forbid})["전제 오류 없음"], s
+        assert not check(Turn("q", answer=s, done=done()), {"forbid": forbid})["전제 오류 없음"], s
     for s in good:
-        t = Turn("q", answer=s, done=done())
-        assert check(t, {"forbid": forbid})["전제 오류 없음"], s
+        assert check(Turn("q", answer=s, done=done()), {"forbid": forbid})["전제 오류 없음"], s

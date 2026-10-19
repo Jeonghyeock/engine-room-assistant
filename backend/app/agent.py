@@ -129,6 +129,13 @@ class Conversation:
             out.append({"n": n, "source": r["source"], "locator": r["locator"], "title": r["title"], "text": r["text"]})
         return out
 
+    def rollback(self, messages_len: int, chunks_len: int) -> None:
+        """실패하거나 중단된 차례를 되돌린다 — 그 차례의 메시지와, 그 차례에 번호를 붙인 검색 조각까지.
+        조각이 남으면 기록에 없는 조각을 다음 차례에 인용해도 확인됨이 된다(리뷰)."""
+        del self.messages[messages_len:]
+        for n in [n for n in self.chunks if n > chunks_len]:
+            self._by_id.pop(self.chunks.pop(n)["id"], None)
+
     @property
     def answered(self) -> bool:
         """앞 차례에 받아들인 답이 있는가 — 있으면 지금 질문은 이어지는 질문이다."""
@@ -264,7 +271,8 @@ async def run_turn(
     검색을 스스로 시작하지 않았다 — 첫 차례에서 찾은 조각에 기대 답했다.
     """
     opts = opts or ChatOptions()
-    turn_start = len(conv.messages)  # 이 차례가 실패하면 여기까지 되돌려 다음 질문이 깨진 기록을 이어받지 않게
+    turn_start = len(conv.messages)  # 이 차례가 실패하거나 중단되면 여기까지 되돌려 다음 질문이 깨진 기록을 이어받지 않게
+    chunks_start = len(conv.chunks)
     follow_up = conv.answered
     conv.messages.append({"role": "user", "content": user_text})
     started = time.perf_counter()
@@ -278,102 +286,110 @@ async def run_turn(
     tools = box.ollama_tools()
 
     def fail(code: str, message: str) -> Error:
-        del conv.messages[turn_start:]
-        return Error(code, message)
+        return Error(code, message)  # 되돌리기는 아래 finally가 한다
 
-    if follow_up and follow_up_search:
-        # 질문만으로는 "트립을 우회해도 되나?"처럼 무엇의 트립인지 빠져 있다 — 지금 알람 이름을 붙여 검색한다.
-        query = user_text + (f" (지금 알람: {', '.join(conv.alarms)})" if conv.alarms else "")
-        step = conv.next_step()
-        yield StepStart(step, "search_docs", {"query": query}, auto=True)
-        res = await box.call("search_docs", {"query": query})
-        if res.ok:
-            numbered = conv.number(res.data["results"])
-            # 모델이 직접 부른 것처럼 호출과 결과를 함께 넣는다(호출 없이 결과만 있으면 템플릿에서 어색하다)
-            conv.messages.append({"role": "assistant", "content": "", "tool_calls": [{"function": {"name": "search_docs", "arguments": {"query": query}}}]})
-            conv.messages.append({"role": "tool", "tool_name": "search_docs", "content": _compact({"results": numbered})})
-            yield StepEnd(step, True, "자동 검색 · " + _summary("search_docs", res, numbered))
-        else:  # 검색이 안 되면 그냥 모델에게 맡긴다
-            yield StepEnd(step, False, "자동 검색 실패 · " + (res.error or "")[:150])
+    accepted = False  # 답을 받아들였는가 — 아니면(실패·중단) finally에서 이 차례를 되돌린다
 
-    while True:
-        text: list[str] = []
-        calls = []
-        # 도구 호출은 줄마다 하나씩 온다 — Done까지 모은 뒤 실행한다. 쓰는 쪽이 중간에 그만 읽으면(4단계 중단 버튼)
-        # aclosing이 모델 스트림을 닫아 Ollama가 생성을 멈춘다.
-        try:
-            async with aclosing(llm(conv.messages, tools, opts)) as stream:
-                async for ev in stream:
-                    if isinstance(ev, TextDelta):
-                        text.append(ev.text)
-                        yield Token(ev.text, model_calls)
-                    elif isinstance(ev, ToolCalls):
-                        calls.extend(ev.calls)
-                    elif isinstance(ev, LLMDone):
-                        completion_tokens += ev.completion_tokens
-                        eval_seconds += ev.eval_seconds
-                        max_prompt = max(max_prompt, ev.prompt_tokens)
-                        reason = ev.reason
-        except LLMError as e:
-            yield fail("llm", str(e))
-            return
-        model_calls += 1
-
-        assistant: dict[str, Any] = {"role": "assistant", "content": "".join(text)}
-        if calls:
-            assistant["tool_calls"] = [{"function": {"name": c.name, "arguments": c.arguments}} for c in calls]
-        conv.messages.append(assistant)
-
-        if not calls:  # 답이 나왔다
-            cites = find_citations(assistant["content"], conv)
-            unverified = [c.locator for c in cites if not c.verified]
-            if guard and unverified and rechecks < MAX_RECHECKS:
-                rechecks += 1
-                step = conv.next_step()
-                # 도구가 아니라 근거 검사를 단계로 보여 주는 가짜 단계다(설계 문서 6.4·6.5)
-                yield StepStart(step, "check_citations", {"unverified": unverified})
-                note = {"role": "user", "content": RECHECK_NOTE.format(cited=", ".join(unverified))}
-                conv.messages.append(note)
-                transient += [assistant, note]
-                yield StepEnd(step, False, f"검색된 적 없는 근거 {', '.join(unverified)} — 검색한 뒤 다시 답하게 함")
-                continue
-            conv.messages[:] = [m for m in conv.messages if not any(m is t for t in transient)]
-            for c in cites:
-                yield c
-            yield Done(
-                tokens=completion_tokens,
-                tok_per_s=round(completion_tokens / eval_seconds, 1) if eval_seconds else 0.0,
-                elapsed_ms=int((time.perf_counter() - started) * 1000),
-                rounds=rounds,
-                max_prompt_tokens=max_prompt,
-                num_ctx=opts.num_ctx,
-                truncated=reason == "length",
-                rechecks=rechecks,
-                model_calls=model_calls,
-            )
-            return
-
-        rounds += 1
-        if rounds > MAX_ROUNDS:
-            yield fail("too_many_steps", f"도구를 {MAX_ROUNDS}번 넘게 불러 멈췄다.")
-            return
-        all_failed = True
-        for call in calls:
+    try:
+        if follow_up and follow_up_search:
+            # 질문만으로는 "트립을 우회해도 되나?"처럼 무엇의 트립인지 빠져 있다 — 지금 알람 이름을 붙여 검색한다.
+            query = user_text + (f" (지금 알람: {', '.join(conv.alarms)})" if conv.alarms else "")
             step = conv.next_step()
-            yield StepStart(step, call.name, call.arguments)
-            res = await box.call(call.name, call.arguments)
-            numbered = conv.number(res.data["results"]) if res.ok and call.name == "search_docs" else None
-            if res.ok and call.name == "list_active_alarms":
-                conv.alarms = [a.get("name") or a.get("tag", "") for a in (res.data or {}).get("alarms", [])]
+            yield StepStart(step, "search_docs", {"query": query}, auto=True)
+            res = await box.call("search_docs", {"query": query})
             if res.ok:
-                content = _compact({"results": numbered} if numbered is not None else res.data)
-                all_failed = False
-            else:
-                content = _compact({"error": res.error})
-            conv.messages.append({"role": "tool", "tool_name": call.name, "content": content})
-            yield StepEnd(step, res.ok, _summary(call.name, res, numbered))
-        # 한 왕복에서 여러 도구가 실패해도 한 번으로 센다 — 모델이 오류를 보고 고칠 기회를 왕복마다 준다
-        failed_rounds = failed_rounds + 1 if all_failed else 0
-        if failed_rounds >= MAX_FAILED_ROUNDS:
-            yield fail("tool_errors", f"부른 도구가 모두 실패한 왕복이 {failed_rounds}번 이어져 멈췄다.")
-            return
+                numbered = conv.number(res.data["results"])
+                # 모델이 직접 부른 것처럼 호출과 결과를 함께 넣는다(호출 없이 결과만 있으면 템플릿에서 어색하다)
+                conv.messages.append({"role": "assistant", "content": "", "tool_calls": [{"function": {"name": "search_docs", "arguments": {"query": query}}}]})
+                conv.messages.append({"role": "tool", "tool_name": "search_docs", "content": _compact({"results": numbered})})
+                yield StepEnd(step, True, "자동 검색 · " + _summary("search_docs", res, numbered))
+            else:  # 검색이 안 되면 그냥 모델에게 맡긴다
+                yield StepEnd(step, False, "자동 검색 실패 · " + (res.error or "")[:150])
+
+        while True:
+            text: list[str] = []
+            calls = []
+            # 도구 호출은 줄마다 하나씩 온다 — Done까지 모은 뒤 실행한다. 쓰는 쪽이 중간에 그만 읽으면(4단계 중단 버튼)
+            # aclosing이 모델 스트림을 닫아 Ollama가 생성을 멈춘다.
+            try:
+                async with aclosing(llm(conv.messages, tools, opts)) as stream:
+                    async for ev in stream:
+                        if isinstance(ev, TextDelta):
+                            text.append(ev.text)
+                            yield Token(ev.text, model_calls)
+                        elif isinstance(ev, ToolCalls):
+                            calls.extend(ev.calls)
+                        elif isinstance(ev, LLMDone):
+                            completion_tokens += ev.completion_tokens
+                            eval_seconds += ev.eval_seconds
+                            max_prompt = max(max_prompt, ev.prompt_tokens)
+                            reason = ev.reason
+            except LLMError as e:
+                yield fail("llm", str(e))
+                return
+            model_calls += 1
+
+            assistant: dict[str, Any] = {"role": "assistant", "content": "".join(text)}
+            if calls:
+                assistant["tool_calls"] = [{"function": {"name": c.name, "arguments": c.arguments}} for c in calls]
+            conv.messages.append(assistant)
+
+            if not calls:  # 답이 나왔다
+                cites = find_citations(assistant["content"], conv)
+                unverified = [c.locator for c in cites if not c.verified]
+                if guard and unverified and rechecks < MAX_RECHECKS:
+                    rechecks += 1
+                    step = conv.next_step()
+                    # 도구가 아니라 근거 검사를 단계로 보여 주는 가짜 단계다(설계 문서 6.4·6.5)
+                    yield StepStart(step, "check_citations", {"unverified": unverified})
+                    note = {"role": "user", "content": RECHECK_NOTE.format(cited=", ".join(unverified))}
+                    conv.messages.append(note)
+                    transient += [assistant, note]
+                    yield StepEnd(step, False, f"검색된 적 없는 근거 {', '.join(unverified)} — 검색한 뒤 다시 답하게 함")
+                    continue
+                conv.messages[:] = [m for m in conv.messages if not any(m is t for t in transient)]
+                accepted = True
+                for c in cites:
+                    yield c
+                yield Done(
+                    tokens=completion_tokens,
+                    tok_per_s=round(completion_tokens / eval_seconds, 1) if eval_seconds else 0.0,
+                    elapsed_ms=int((time.perf_counter() - started) * 1000),
+                    rounds=rounds,
+                    max_prompt_tokens=max_prompt,
+                    num_ctx=opts.num_ctx,
+                    truncated=reason == "length",
+                    rechecks=rechecks,
+                    model_calls=model_calls,
+                )
+                return
+
+            rounds += 1
+            if rounds > MAX_ROUNDS:
+                yield fail("too_many_steps", f"도구를 {MAX_ROUNDS}번 넘게 불러 멈췄다.")
+                return
+            all_failed = True
+            for call in calls:
+                step = conv.next_step()
+                yield StepStart(step, call.name, call.arguments)
+                res = await box.call(call.name, call.arguments)
+                numbered = conv.number(res.data["results"]) if res.ok and call.name == "search_docs" else None
+                if res.ok and call.name == "list_active_alarms":
+                    conv.alarms = [a.get("name") or a.get("tag", "") for a in (res.data or {}).get("alarms", [])]
+                if res.ok:
+                    content = _compact({"results": numbered} if numbered is not None else res.data)
+                    all_failed = False
+                else:
+                    content = _compact({"error": res.error})
+                conv.messages.append({"role": "tool", "tool_name": call.name, "content": content})
+                yield StepEnd(step, res.ok, _summary(call.name, res, numbered))
+            # 한 왕복에서 여러 도구가 실패해도 한 번으로 센다 — 모델이 오류를 보고 고칠 기회를 왕복마다 준다
+            failed_rounds = failed_rounds + 1 if all_failed else 0
+            if failed_rounds >= MAX_FAILED_ROUNDS:
+                yield fail("tool_errors", f"부른 도구가 모두 실패한 왕복이 {failed_rounds}번 이어져 멈췄다.")
+                return
+    finally:
+        # 실패(Error)했거나, 쓰는 쪽이 중간에 그만 읽었으면(4단계 중단 버튼 — 생성기가 닫힘) 이 차례를 되돌린다.
+        # 근거 검사 중에 멈추면 되돌린 초안이 기록에 남아 다음 질문이 "이어지는 질문"으로 잘못 갈렸다(리뷰).
+        if not accepted:
+            conv.rollback(turn_start, chunks_start)
