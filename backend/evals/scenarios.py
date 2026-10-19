@@ -1,16 +1,18 @@
 """에이전트 시나리오 평가 — scenarios.yaml의 시나리오를 실제 모델로 여러 번 돌려 검사한다.
 
-    uv run python -m evals.scenarios                 # S1~S3 × 씨앗 3개 → evals/results/scenarios-<label>.md
-    uv run python -m evals.scenarios --think --label think
+    uv run python -m evals.scenarios --label 이름              # S1~S3 × 씨앗 3개 → evals/results/scenarios-이름.md
+    uv run python -m evals.scenarios --label think --think
 
-결과 표(통과 수)와 함께 모든 답을 evals/results/transcripts/<label>/에 저장한다. 판정(qwen3:8b의 예/아니오)은
-표시일 뿐이고, 최종 판단은 저장된 답을 사람이 읽고 한다.
+- "전체"는 정해진 검사(도구·인용·근거·문맥)만으로 정한다.
+- 판정(qwen3:8b의 예/아니오, 기준 하나에 질문 하나)은 따로 칸을 둔 표시일 뿐이다. 판정 원문까지 모든 답을
+  evals/results/transcripts/<label>/에 저장하고, 최종 판단은 사람이 그 답을 읽고 한다.
+- 씨앗이 뜻을 가지려면 temperature가 0보다 커야 한다(0이면 씨앗과 상관없이 같은 답이 나온다). 평가는 qwen3가
+  권하는 비생각 모드 값 0.7로 돌린다.
 """
 
 import argparse
 import asyncio
 import datetime as dt
-import re
 from contextlib import aclosing
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -23,6 +25,8 @@ from app.tools import ToolBox
 
 HERE = Path(__file__).resolve().parent
 SEEDS = [1, 2, 3]
+EVAL_TEMPERATURE = 0.7
+CHECKS = ["답함", "도구", "도구 인자", "인용 있음", "미확인 인용 없음", "필수 근거", "문맥 여유", "잘리지 않음"]
 
 
 @dataclass
@@ -33,6 +37,7 @@ class Turn:
     citations: list[Citation] = field(default_factory=list)
     done: Done | None = None
     error: Error | None = None
+    judgements: list[dict] = field(default_factory=list)  # {criterion, want, raw, verdict}
 
 
 # ---- 정해진 검사 ----
@@ -44,26 +49,32 @@ def _covers(loc: str, want: str) -> bool:
 
 
 def check(turn: Turn, expect: dict) -> dict[str, bool]:
+    """정해진 검사. 기대하지 않은 항목은 통과로 둔다(표에서 칸이 빠지지 않게)."""
     called = [s["tool"] for s in turn.steps]
-    out = {"답함": turn.done is not None and turn.error is None and bool(turn.answer.strip())}
-    if expect.get("tools"):
-        out["도구"] = all(t in called for t in expect["tools"])
-    for want in expect.get("tool_args", []):
-        out[f"{want['tool']}({want['value']})"] = any(
-            s["tool"] == want["tool"] and str(s["args"].get(want["arg"], "")).upper() == want["value"] for s in turn.steps
-        )
     verified = [c for c in turn.citations if c.verified]
-    out["인용 있음"] = bool(verified)
-    out["미확인 인용 없음"] = not any(not c.verified for c in turn.citations)
-    if expect.get("cite_any"):
-        out["필수 근거"] = any(_covers(c.locator, w) for c in verified for w in expect["cite_any"])
-    out["문맥 여유"] = turn.done is not None and not turn.done.context_near_limit
-    return out
+    return {
+        "답함": turn.done is not None and turn.error is None and bool(turn.answer.strip()),
+        "도구": all(t in called for t in expect.get("tools", [])) and (not expect.get("tools_any") or any(t in called for t in expect["tools_any"])),
+        "도구 인자": all(
+            any(s["tool"] == w["tool"] and str(s["args"].get(w["arg"], "")).upper() == w["value"] for s in turn.steps)
+            for w in expect.get("tool_args", [])
+        ),
+        "인용 있음": bool(verified),
+        "미확인 인용 없음": not any(not c.verified for c in turn.citations),
+        "필수 근거": not expect.get("cite_any") or any(_covers(c.locator, w) for c in verified for w in expect["cite_any"]),
+        "문맥 여유": turn.done is not None and not turn.done.context_near_limit,
+        "잘리지 않음": turn.done is not None and not turn.done.truncated,
+    }
+
+
+def not_reached() -> dict[str, bool]:
+    """앞 차례가 오류로 끝나 못 간 차례 — 모든 칸을 실패로."""
+    return {k: False for k in CHECKS} | {"전체": False, "판정": False}
 
 
 # ---- 판정 ----
 
-JUDGE_PROMPT = """너는 채점자다. 아래 질문과 답을 읽고 기준에 대해 "예" 또는 "아니오" 한 단어로만 답하라.
+JUDGE_PROMPT = """너는 채점자다. 아래 질문과 답을 읽고, 기준에 대해 "예" 또는 "아니오" 한 단어로만 답하라.
 
 기준: {criterion}
 
@@ -74,18 +85,29 @@ JUDGE_PROMPT = """너는 채점자다. 아래 질문과 답을 읽고 기준에 
 
 
 def parse_judgement(text: str) -> bool | None:
-    m = re.search(r"(예|아니오|아니요)", text)
-    return None if not m else m.group(1) == "예"
+    """답의 맨 앞만 본다 — "예외", "예를 들어" 같은 말 속의 '예'를 판정으로 읽지 않게."""
+    head = text.strip().lstrip("\"'*「『 ")
+    if head.startswith(("아니오", "아니요")):
+        return False
+    if head.startswith("예") and not head.startswith(("예외", "예를", "예시", "예상")):
+        return True
+    return None
 
 
-async def judge(ask: str, answer: str, criterion: str) -> bool | None:
+async def judge(ask: str, answer: str, criterion: str) -> tuple[bool | None, str]:
     prompt = JUDGE_PROMPT.format(criterion=criterion, ask=ask, answer=answer)
     text = []
     async with aclosing(stream_chat([{"role": "user", "content": prompt}], [], ChatOptions(num_predict=8))) as events:
         async for ev in events:
             if isinstance(ev, TextDelta):
                 text.append(ev.text)
-    return parse_judgement("".join(text))
+    raw = "".join(text)
+    return parse_judgement(raw), raw
+
+
+def judged_ok(turn: Turn) -> bool:
+    """판정을 못 읽었으면(None) 실패로 센다."""
+    return all(j["verdict"] is j["want"] for j in turn.judgements)
 
 
 # ---- 실행 ----
@@ -114,12 +136,25 @@ async def run_scenario(spec: dict, opts: ChatOptions) -> list[Turn]:
                             turn.citations.append(ev)
                         case Done():
                             turn.done = ev
+                            if round_ != ev.rounds:  # 마지막 왕복에 글이 없었다 — 앞 왕복의 짧은 말을 답으로 두지 않는다
+                                turn.answer = ""
                         case Error():
                             turn.error = ev
             turns.append(turn)
             if turn.error:
                 break
     return turns
+
+
+async def judge_turn(turn: Turn, expect: dict) -> None:
+    if not turn.answer.strip():
+        return
+    for criterion in expect.get("judge_pass", []):
+        verdict, raw = await judge(turn.ask, turn.answer, criterion)
+        turn.judgements.append({"criterion": criterion, "want": True, "raw": raw, "verdict": verdict})
+    for criterion in expect.get("judge_fail", []):
+        verdict, raw = await judge(turn.ask, turn.answer, criterion)
+        turn.judgements.append({"criterion": criterion, "want": False, "raw": raw, "verdict": verdict})
 
 
 def transcript(sid: str, seed: int, turns: list[Turn], results: list[dict]) -> str:
@@ -137,50 +172,48 @@ def transcript(sid: str, seed: int, turns: list[Turn], results: list[dict]) -> s
         if turn.error:
             lines.append(f"\n✗ {turn.error.code}: {turn.error.message}")
         lines += ["", "검사: " + ", ".join(f"{k} {'✓' if v else '✗'}" for k, v in res.items()), ""]
+        for j in turn.judgements:
+            mark = "✓" if j["verdict"] is j["want"] else "✗"
+            lines.append(f"- 판정 {mark} {j['criterion']} → 원문 {j['raw'].strip()!r} (바라는 답: {'예' if j['want'] else '아니오'})")
+        lines.append("")
     return "\n".join(lines)
 
 
 async def evaluate(specs: list[dict], opts: ChatOptions, label: str) -> str:
     out_dir = HERE / "results" / "transcripts" / label
     out_dir.mkdir(parents=True, exist_ok=True)
-    rows = []  # (시나리오, 차례 번호, 검사 이름) → 통과 수
-    table: dict[tuple, list[bool]] = {}
+    table: dict[tuple, list[bool]] = {}  # (시나리오, 차례 번호, 칸) → 실행마다 통과 여부
     for spec in specs:
         for seed in SEEDS:
             turns = await run_scenario(spec, ChatOptions(**{**opts.__dict__, "seed": seed}))
             results = []
-            for i, (turn, expect) in enumerate(zip(turns, spec["turns"]), 1):
+            for turn, expect in zip(turns, spec["turns"]):
+                await judge_turn(turn, expect)
                 res = check(turn, expect)
-                if turn.answer and expect.get("judge_pass"):
-                    res["판정"] = bool(await judge(turn.ask, turn.answer, expect["judge_pass"]))
-                if turn.answer and expect.get("judge_fail"):
-                    res["판정"] = (await judge(turn.ask, turn.answer, expect["judge_fail"])) is False
-                res["전체"] = all(res.values())
+                res["전체"] = all(res.values())  # 정해진 검사만
+                res["판정"] = bool(turn.answer.strip()) and judged_ok(turn)
                 results.append(res)
+            results += [not_reached() for _ in range(len(turns), len(spec["turns"]))]
+            for i, res in enumerate(results, 1):
                 for k, v in res.items():
                     table.setdefault((spec["id"], i, k), []).append(v)
-            for i in range(len(turns), len(spec["turns"])):  # 앞 차례가 오류로 끝나 못 간 차례는 실패
-                table.setdefault((spec["id"], i + 1, "전체"), []).append(False)
             (out_dir / f"{spec['id']}-seed{seed}.md").write_text(transcript(spec["id"], seed, turns, results), encoding="utf-8")
-            print(f"{spec['id']} 씨앗 {seed}: " + " / ".join("✓" if r["전체"] else "✗" for r in results), flush=True)
+            print(f"{spec['id']} 씨앗 {seed}: " + " / ".join(("✓" if r["전체"] else "✗") + ("" if r["판정"] else "(판정✗)") for r in results), flush=True)
 
-    checks = ["답함", "도구", "인용 있음", "미확인 인용 없음", "필수 근거", "문맥 여유", "판정", "전체"]
+    cols = CHECKS + ["전체", "판정"]
     lines = [
         f"# 시나리오 평가 — {label}",
         "",
-        f"{dt.date.today()} · {opts.model} · think={'켬' if opts.think else '끔'} · num_ctx {opts.num_ctx} · 씨앗 {SEEDS} · 칸은 통과 수/실행 수",
+        f"{dt.date.today()} · {opts.model} · temperature {opts.temperature} · think={'켬' if opts.think else '끔'} · num_ctx {opts.num_ctx} · 씨앗 {SEEDS}",
         "",
-        "| 시나리오 | 질문 | " + " | ".join(checks) + " |",
-        "|---|---|" + "---|" * len(checks),
+        "칸은 통과 수/실행 수. **전체 = 정해진 검사만**(판정은 표시 — 답 전문의 판정 원문과 함께 사람이 읽고 판단).",
+        "",
+        "| 시나리오 | 질문 | " + " | ".join(cols) + " |",
+        "|---|---|" + "---|" * len(cols),
     ]
     for spec in specs:
         for i, t in enumerate(spec["turns"], 1):
-            cells = []
-            for k in checks:
-                v = table.get((spec["id"], i, k))
-                if not v and k == "도구":
-                    v = None
-                cells.append(f"{sum(v)}/{len(v)}" if v else "-")
+            cells = [f"{sum(v)}/{len(v)}" for v in (table[(spec["id"], i, k)] for k in cols)]
             lines.append(f"| {spec['id']} | {t['ask']} | " + " | ".join(cells) + " |")
     lines += ["", f"답 전문: `evals/results/transcripts/{label}/`"]
     return "\n".join(lines) + "\n"
@@ -188,16 +221,20 @@ async def evaluate(specs: list[dict], opts: ChatOptions, label: str) -> str:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--label", default="baseline")
+    ap.add_argument("--label", default=dt.datetime.now().strftime("%Y%m%d-%H%M"), help="결과 이름(기본: 지금 시각)")
+    ap.add_argument("--overwrite", action="store_true", help="같은 이름의 결과를 덮어쓴다")
     ap.add_argument("--think", action="store_true")
+    ap.add_argument("--temperature", type=float, default=EVAL_TEMPERATURE)
     ap.add_argument("--num-ctx", type=int, default=8192)
     ap.add_argument("--only", nargs="*", help="S1 S2 … 중 일부만")
     a = ap.parse_args()
+    out = HERE / "results" / f"scenarios-{a.label}.md"
+    if out.exists() and not a.overwrite:
+        ap.error(f"{out.name}이 이미 있다 — 다른 --label을 쓰거나 --overwrite")
     specs = yaml.safe_load((HERE / "scenarios.yaml").read_text(encoding="utf-8"))
     if a.only:
         specs = [s for s in specs if s["id"] in a.only]
-    md = asyncio.run(evaluate(specs, ChatOptions(think=a.think, num_ctx=a.num_ctx), a.label))
-    out = HERE / "results" / f"scenarios-{a.label}.md"
+    md = asyncio.run(evaluate(specs, ChatOptions(think=a.think, temperature=a.temperature, num_ctx=a.num_ctx), a.label))
     out.write_text(md, encoding="utf-8")
     print(md)
 

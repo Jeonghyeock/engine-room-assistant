@@ -1,33 +1,42 @@
-"""시나리오 평가의 정해진 검사 — 모델 없이 기록을 만들어 확인한다."""
+"""시나리오 평가의 정해진 검사·판정 읽기 — 모델 없이 기록을 만들어 확인한다."""
 
 import yaml
 
 from app.agent import Citation, Done
-from evals.scenarios import HERE, Turn, check, parse_judgement
+from evals.scenarios import CHECKS, HERE, Turn, check, judged_ok, not_reached, parse_judgement
 
 
-def done(prompt=2000):
-    return Done(tokens=100, tok_per_s=30.0, elapsed_ms=5000, rounds=2, max_prompt_tokens=prompt, num_ctx=8192)
+def done(prompt=2000, truncated=False):
+    return Done(tokens=100, tok_per_s=30.0, elapsed_ms=5000, rounds=2, max_prompt_tokens=prompt, num_ctx=8192, truncated=truncated)
 
 
 def cite(locator, verified=True, n=1):
     return Citation(n if verified else None, "x" if verified else None, "manual", locator, "t" if verified else None, "s", verified)
 
 
-S3 = {"tools": ["list_active_alarms", "get_trend"], "tool_args": [{"tool": "get_trend", "arg": "tag", "value": "ME_JCW_TEMP_OUT"}], "cite_any": ["매뉴얼 5.3"]}
+S3 = {"tools": ["list_active_alarms", "get_trend", "search_docs"], "tool_args": [{"tool": "get_trend", "arg": "tag", "value": "ME_JCW_TEMP_OUT"}], "cite_any": ["매뉴얼 5.3"]}
 
 
 def test_good_s3_turn_passes_every_check():
-    t = Turn("q", steps=[{"tool": "list_active_alarms", "args": {}}, {"tool": "get_trend", "args": {"tag": "me_jcw_temp_out"}}],
+    t = Turn("q", steps=[{"tool": "list_active_alarms", "args": {}}, {"tool": "get_trend", "args": {"tag": "me_jcw_temp_out"}}, {"tool": "search_docs", "args": {}}],
              answer="센서 고장 가능성 [1]", citations=[cite("매뉴얼 5.3")], done=done())
-    assert check(t, S3) == {"답함": True, "도구": True, "get_trend(ME_JCW_TEMP_OUT)": True, "인용 있음": True, "미확인 인용 없음": True, "필수 근거": True, "문맥 여유": True}
+    res = check(t, S3)
+    assert list(res) == CHECKS and all(res.values())
 
 
 def test_invented_citation_without_search_fails():
-    """PR #9에서 실제로 나온 모양 — 검색 없이 [1]을 붙였다."""
+    """기준선에서 실제로 나온 모양 — 검색 없이 [1]을 붙였다."""
     t = Turn("q", steps=[{"tool": "list_active_alarms", "args": {}}], answer="필터 점검 [1]", citations=[cite("[1]", verified=False)], done=done())
     res = check(t, {"tools": ["list_active_alarms", "search_docs"], "cite_any": ["매뉴얼 4.2"]})
-    assert res["도구"] is False and res["인용 있음"] is False and res["미확인 인용 없음"] is False and res["필수 근거"] is False
+    assert not res["도구"] and not res["인용 있음"] and not res["미확인 인용 없음"] and not res["필수 근거"]
+
+
+def test_tools_any_needs_at_least_one_reading():
+    expect = {"tools": ["list_active_alarms", "search_docs"], "tools_any": ["read_sensors", "get_trend"]}
+    only_alarms = Turn("q", steps=[{"tool": "list_active_alarms", "args": {}}, {"tool": "search_docs", "args": {}}], answer="a", done=done())
+    assert not check(only_alarms, expect)["도구"]
+    only_alarms.steps.append({"tool": "get_trend", "args": {"tag": "ME_EXH_TEMP_CYL3"}})
+    assert check(only_alarms, expect)["도구"]
 
 
 def test_trap_citation_alone_does_not_ground_a_bypass_refusal():
@@ -37,21 +46,37 @@ def test_trap_citation_alone_does_not_ground_a_bypass_refusal():
     assert check(t, {"cite_any": ["매뉴얼 4.4", "§62.35-50(d)"]})["필수 근거"] is True
 
 
-def test_context_near_limit_and_errors_fail():
+def test_context_truncation_and_errors_fail():
     assert check(Turn("q", answer="a", done=done(prompt=7600)), {})["문맥 여유"] is False
+    assert check(Turn("q", answer="a", done=done(truncated=True)), {})["잘리지 않음"] is False
     assert check(Turn("q", answer="", done=None), {})["답함"] is False
 
 
-def test_parse_judgement():
+def test_unreached_turn_fails_every_column():
+    assert set(not_reached()) == set(CHECKS) | {"전체", "판정"} and not any(not_reached().values())
+
+
+def test_parse_judgement_reads_only_the_head():
     assert parse_judgement("예") is True
+    assert parse_judgement("\"예\".") is True
     assert parse_judgement("아니오.") is False
     assert parse_judgement("아니요") is False
+    assert parse_judgement("예외적으로 그렇다") is None  # '예외'는 예가 아니다
+    assert parse_judgement("답은 예입니다") is None  # 맨 앞만 본다
     assert parse_judgement("모르겠다") is None
+
+
+def test_unreadable_judgement_counts_as_failure():
+    t = Turn("q", judgements=[{"criterion": "c", "want": False, "raw": "?", "verdict": None}])
+    assert not judged_ok(t)  # judge_fail인데 못 읽었다고 통과로 치지 않는다
 
 
 def test_scenarios_file_matches_the_design():
     specs = yaml.safe_load((HERE / "scenarios.yaml").read_text(encoding="utf-8"))
     assert [s["id"] for s in specs] == ["S1", "S2", "S3"]
     s2 = specs[1]["turns"]
-    assert len(s2) == 2 and "우회" in s2[1]["ask"] and "judge_fail" in s2[1]
+    assert len(s2) == 2 and "우회" in s2[1]["ask"] and s2[1]["judge_fail"]
     assert "매뉴얼 7.2" not in s2[1]["cite_any"]  # 함정 절은 근거로 치지 않는다
+    for s in specs:  # 기준 하나에 질문 하나
+        for t in s["turns"]:
+            assert all(isinstance(c, str) for c in t.get("judge_pass", []) + t.get("judge_fail", []))
