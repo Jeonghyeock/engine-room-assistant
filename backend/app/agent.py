@@ -35,6 +35,12 @@ RECHECK_NOTE = (
     "(자동 검사) 방금 답의 근거 {cited}는 이번 대화에서 검색된 적이 없다. "
     "search_docs로 매뉴얼(필요하면 규정)을 찾은 뒤, 검색 결과의 번호로만 근거를 달아 다시 답하라."
 )
+# 이어지는 질문에 새로 검색하지 않고 앞 차례에서 찾은 근거만 다시 쓰면, 번호는 검색된 것이라도 이 질문의 근거가
+# 아닐 수 있다(평가: S2 우회 질문에서 첫 질문의 4.2·4.3을 그대로 인용). 프롬프트로 일러도 따르지 않아 코드로 막는다.
+FRESH_NOTE = (
+    "(자동 검사) 이번 질문에 대해 새로 검색하지 않고 앞에서 찾은 근거 {cited}만 썼다. "
+    "이 질문에 맞는 근거를 search_docs로 새로 찾은 뒤(규정은 source=\"cfr\", 영어 질의), 그 결과의 번호로 다시 답하라."
+)
 # 문맥이 num_ctx를 넘으면 Ollama는 오래된 대화(앞쪽 질문·도구 결과)를 잘라낸 뒤 남은 길이를 보고한다.
 # 그래서 보고된 길이는 num_ctx를 넘지 않는다 — 이만큼 가까우면 잘렸을 수 있다고 본다.
 CONTEXT_LIMIT_RATIO = 0.9
@@ -257,6 +263,7 @@ async def run_turn(
     conv.messages.append({"role": "user", "content": user_text})
     started = time.perf_counter()
     rounds = failed_rounds = completion_tokens = rechecks = model_calls = 0
+    searched = False  # 이 차례에서 search_docs가 결과를 돌려줬는지
     # 되돌린 초안과 자동 검사 메시지. 답이 받아들여지면 기록에서 지운다 — 남겨 두면 다음 질문에서 모델이
     # "(자동 검사) 다시 답하라"를 다시 읽고 앞 답을 되풀이한다(리뷰에서 S2 우회 질문 3번 모두).
     transient: list[dict] = []
@@ -300,15 +307,22 @@ async def run_turn(
         if not calls:  # 답이 나왔다
             cites = find_citations(assistant["content"], conv)
             unverified = [c.locator for c in cites if not c.verified]
-            if guard and unverified and rechecks < MAX_RECHECKS:
+            stale = [c.locator for c in cites if c.verified] if cites and not searched and not unverified else []
+            if guard and (unverified or stale) and rechecks < MAX_RECHECKS:
                 rechecks += 1
                 step = conv.next_step()
                 # 도구가 아니라 근거 검사를 단계로 보여 주는 가짜 단계다(설계 문서 6.4·6.5)
-                yield StepStart(step, "check_citations", {"unverified": unverified})
-                note = {"role": "user", "content": RECHECK_NOTE.format(cited=", ".join(unverified))}
+                if unverified:
+                    args, text = {"unverified": unverified}, RECHECK_NOTE.format(cited=", ".join(unverified))
+                    summary = f"검색된 적 없는 근거 {', '.join(unverified)} — 검색한 뒤 다시 답하게 함"
+                else:
+                    args, text = {"not_searched_this_turn": stale}, FRESH_NOTE.format(cited=", ".join(stale))
+                    summary = f"이번 질문에 새로 검색하지 않고 앞 근거 {', '.join(stale)}만 씀 — 새로 검색하게 함"
+                yield StepStart(step, "check_citations", args)
+                note = {"role": "user", "content": text}
                 conv.messages.append(note)
                 transient += [assistant, note]
-                yield StepEnd(step, False, f"검색된 적 없는 근거 {', '.join(unverified)} — 검색한 뒤 다시 답하게 함")
+                yield StepEnd(step, False, summary)
                 continue
             conv.messages[:] = [m for m in conv.messages if not any(m is t for t in transient)]
             for c in cites:
@@ -336,6 +350,7 @@ async def run_turn(
             yield StepStart(step, call.name, call.arguments)
             res = await box.call(call.name, call.arguments)
             numbered = conv.number(res.data["results"]) if res.ok and call.name == "search_docs" else None
+            searched = searched or numbered is not None
             if res.ok:
                 content = _compact({"results": numbered} if numbered is not None else res.data)
                 all_failed = False

@@ -301,3 +301,28 @@ def test_partial_read_reaches_the_model_and_the_step_summary():
     events = run(Conversation(), "?", llm, box)
     assert [e.summary for e in events if isinstance(e, StepEnd)] == ["ME_LO_PRESS_IN 1.62bar · 모르는 태그 LO_TANK_LEVEL"]
     assert json.loads(llm.seen[1][-1]["content"])["unknown"] == [{"tag": "LO_TANK_LEVEL", "similar": ["LO_SUMP_LEVEL"]}]
+
+
+def test_follow_up_that_reuses_old_citations_without_searching_is_sent_back():
+    """평가: S2 우회 질문에서 새로 검색하지 않고 첫 질문의 4.2·4.3을 인용했다."""
+    box = FakeBox({"search_docs": [ToolResult(True, {"results": [CHUNK_44]}), ToolResult(True, {"results": [CHUNK_D]})]})
+    conv = Conversation()
+    run(conv, "알람 분석", FakeLLM(calls(("search_docs", {"query": "a"})), answer("압력부터 [1].")), box)
+    llm = FakeLLM(answer("우회하면 안 된다 [1]."), calls(("search_docs", {"query": "override", "source": "cfr"})), answer("우회하면 안 된다 [2]."))
+    events = run(conv, "우회해도 되나?", llm, box)
+    steps = [(e.tool, e.args) for e in events if isinstance(e, StepStart)]
+    assert steps[0] == ("check_citations", {"not_searched_this_turn": ["매뉴얼 4.4"]})
+    assert "새로 검색하지 않고" in llm.seen[1][-1]["content"]
+    assert [(c.n, c.locator) for c in events if isinstance(c, Citation)] == [(2, "§62.35-50(d)")]
+
+
+def test_follow_up_with_a_fresh_search_or_no_citations_is_accepted():
+    box = FakeBox({"search_docs": ToolResult(True, {"results": [CHUNK_44]})})
+    conv = Conversation()
+    run(conv, "첫 질문", FakeLLM(calls(("search_docs", {"query": "a"})), answer("답 [1].")), box)
+    # 새로 검색해 같은 조각이 나왔으면 앞 번호를 그대로 써도 된다
+    events = run(conv, "다시 확인", FakeLLM(calls(("search_docs", {"query": "b"})), answer("여전히 [1].")), box)
+    assert events[-1].rechecks == 0
+    # 인용이 없는 짧은 답은 되돌리지 않는다
+    events = run(conv, "고마워", FakeLLM(answer("천만에요.")), box)
+    assert events[-1].rechecks == 0
