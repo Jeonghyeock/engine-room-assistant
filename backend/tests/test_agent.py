@@ -338,3 +338,32 @@ def test_failed_auto_search_leaves_the_question_to_the_model():
     run(conv, "첫 질문", FakeLLM(answer("답.")), box)
     events = run(conv, "이어서", FakeLLM(answer("답할게요.")), box)
     assert events[1] == StepEnd(1, False, "자동 검색 실패 · 문서 색인이 없거나 손상됐다.") and isinstance(events[-1], Done)
+
+
+def test_stopping_mid_recheck_rolls_the_turn_back():
+    """리뷰: 근거 검사 중에 멈추면 되돌린 초안이 기록에 남아 다음 질문이 이어지는 질문으로 잘못 갈렸다."""
+    conv = Conversation()
+
+    async def go():
+        async with aclosing(run_turn(conv, "질문", FakeBox({}), ChatOptions(), llm=FakeLLM(answer("지어낸 [1]."), answer("또 [1].")))) as events:
+            async for ev in events:
+                if isinstance(ev, StepStart) and ev.tool == "check_citations":
+                    break  # 화면의 중단 버튼
+
+    asyncio.run(go())
+    assert [m["role"] for m in conv.messages] == ["system"] and not conv.answered
+
+
+def test_failed_turn_also_forgets_its_search_chunks():
+    """리뷰: 실패한 차례의 자동 검색 조각이 남아, 다음 차례에 기록에 없는 [2]를 인용해도 확인됨이 됐다."""
+    box = FakeBox({"search_docs": [ToolResult(True, {"results": [CHUNK_44]}), ToolResult(True, {"results": [CHUNK_D]})]})
+    conv = Conversation()
+    run(conv, "첫 질문", FakeLLM(calls(("search_docs", {"query": "a"})), answer("답 [1].")), box)
+
+    async def broken(messages, tools, opts):
+        raise LLMError("멈춤")
+        yield  # noqa
+
+    run(conv, "이어서", broken, box)  # 자동 검색으로 [2]가 붙은 뒤 모델 오류
+    assert list(conv.chunks) == [1]
+    assert find_citations("근거 [2].", conv)[0].verified is False
