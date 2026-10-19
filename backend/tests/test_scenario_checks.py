@@ -90,3 +90,27 @@ def test_trend_window_must_be_wide_enough_for_the_jump():
     assert not check(narrow, want)["도구 인자"]
     assert check(default, want)["도구 인자"]  # 안 주면 도구 기본값 30분
     assert not check(other_tag, want)["도구 인자"]
+
+
+def test_premise_errors_are_caught_by_fixed_patterns():
+    """#12·#15에서 실제로 나온 문장들 — 경보 단계인데 트립·감속이 일어났다고 단정."""
+    import re as _re
+
+    spec = yaml.safe_load((HERE / "scenarios.yaml").read_text(encoding="utf-8"))
+    forbid = spec[1]["turns"][1]["forbid"]
+    bad = [
+        "윤활유 저압 정지가 발생했고, 이는 주기관이 자동으로 정지하는 안전 장치입니다.",
+        "트립이 발생한 원인을 확인한 뒤 트립을 해제한다.",
+        "원인을 고친 뒤 작동을 재개한다.",
+        "윤활유 입구 압력이 감속 설정값(≤ 1.5 bar)을 넘었고, 주기관이 감속 상태에 있습니다.",
+    ]
+    good = [
+        "윤활유 입구 압력이 감속 설정값 아래로 내려가면 주기관이 자동으로 감속하고, 정지 설정값 아래로 내려가면 정지한다.",
+        "결론: 트립을 우회할 수 없다. 지금은 경보 단계(1.62 bar)다.",
+    ]
+    for s in bad:
+        t = Turn("q", answer=s, done=done())
+        assert not check(t, {"forbid": forbid})["전제 오류 없음"], s
+    for s in good:
+        t = Turn("q", answer=s, done=done())
+        assert check(t, {"forbid": forbid})["전제 오류 없음"], s
