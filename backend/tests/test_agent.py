@@ -265,3 +265,29 @@ def test_prompt_version_is_chosen_per_conversation():
 
     assert Conversation(prompt="v1").messages[0]["content"] == PROMPTS["v1"]
     assert Conversation().messages[0]["content"] == PROMPTS["v2"]
+
+
+def test_rejected_draft_and_note_leave_the_history_once_the_answer_is_accepted():
+    """리뷰: 남겨 두면 다음 질문에서 모델이 "(자동 검사) 다시 답하라"를 다시 읽고 앞 답을 되풀이했다."""
+    box = FakeBox({"search_docs": ToolResult(True, {"results": [CHUNK_44]})})
+    llm = FakeLLM(answer("지어낸 [1]."), calls(("search_docs", {"query": "q"})), answer("근거 있는 답 [1]."))
+    conv = Conversation()
+    run(conv, "질문", llm, box)
+    contents = [m["content"] for m in conv.messages]
+    assert not any("(자동 검사)" in c or c == "지어낸 [1]." for c in contents)
+    assert contents[-1] == "근거 있는 답 [1]." and [m["role"] for m in conv.messages] == ["system", "user", "assistant", "tool", "assistant"]
+
+
+def test_recheck_does_not_count_as_a_tool_round():
+    """리뷰: 되돌림이 왕복으로 세지면 7번째 왕복의 초안을 되돌린 뒤 검색하자마자 too_many_steps로 차례 전체가 사라졌다."""
+    box = FakeBox({"list_tags": ToolResult(True, {"tags": []}), "search_docs": ToolResult(True, {"results": [CHUNK_44]})})
+    llm = FakeLLM(*[calls(("list_tags", {}))] * (MAX_ROUNDS - 1), answer("지어낸 [1]."), calls(("search_docs", {"query": "q"})), answer("답 [1]."))
+    events = run(Conversation(), "?", llm, box)
+    done = events[-1]
+    assert isinstance(done, Done) and done.rounds == MAX_ROUNDS and done.rechecks == 1 and done.model_calls == MAX_ROUNDS + 2
+
+
+def test_token_round_counts_model_calls_so_a_redo_is_separate_from_its_draft():
+    llm = FakeLLM(answer("지어낸 [3]."), answer("근거 없이 다시 [3]."), answer("마지막 [3]."))
+    tokens = [e for e in run(Conversation(), "?", llm, FakeBox({})) if isinstance(e, Token)]
+    assert sorted({t.round for t in tokens}) == [0, 1, 2]

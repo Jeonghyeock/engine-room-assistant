@@ -37,8 +37,6 @@ RECHECK_NOTE = (
 # 그래서 보고된 길이는 num_ctx를 넘지 않는다 — 이만큼 가까우면 잘렸을 수 있다고 본다.
 CONTEXT_LIMIT_RATIO = 0.9
 
-SYSTEM_PROMPT = PROMPTS[DEFAULT_PROMPT]
-
 
 # ---- 이벤트(설계 문서 6.5) ----
 
@@ -60,7 +58,7 @@ class StepEnd:
 @dataclass
 class Token:
     text: str
-    round: int  # 몇 번째 모델 호출의 글인지(0부터). 도구를 부르기 전에 하는 짧은 말과 마지막 답을 화면이 가를 수 있게
+    round: int  # 이 차례에서 몇 번째 모델 호출의 글인지(0부터). 도구 전 짧은 말·되돌린 초안과 마지막 답을 화면이 가를 수 있게
 
 
 @dataclass
@@ -79,11 +77,12 @@ class Done:
     tokens: int  # 이번 차례에 모델이 쓴 토큰 합
     tok_per_s: float
     elapsed_ms: int
-    rounds: int  # 도구를 부른 왕복 수
+    rounds: int  # 도구를 부른 왕복 수(근거 검사로 되돌린 것은 세지 않는다 — rechecks)
     max_prompt_tokens: int  # 가장 컸던 문맥 길이(num_ctx를 넘지 않는다 — 위 CONTEXT_LIMIT_RATIO)
     num_ctx: int
     truncated: bool = False  # 답이 num_predict에서 잘렸다
     rechecks: int = 0  # 근거 검사로 답을 되돌린 횟수
+    model_calls: int = 0  # 이 차례에서 모델을 부른 횟수 — 마지막 답의 Token.round는 model_calls - 1
 
     @property
     def context_near_limit(self) -> bool:
@@ -253,7 +252,10 @@ async def run_turn(
     turn_start = len(conv.messages)  # 이 차례가 실패하면 여기까지 되돌려 다음 질문이 깨진 기록을 이어받지 않게
     conv.messages.append({"role": "user", "content": user_text})
     started = time.perf_counter()
-    rounds = failed_rounds = completion_tokens = rechecks = 0
+    rounds = failed_rounds = completion_tokens = rechecks = model_calls = 0
+    # 되돌린 초안과 자동 검사 메시지. 답이 받아들여지면 기록에서 지운다 — 남겨 두면 다음 질문에서 모델이
+    # "(자동 검사) 다시 답하라"를 다시 읽고 앞 답을 되풀이한다(리뷰에서 S2 우회 질문 3번 모두).
+    transient: list[dict] = []
     eval_seconds = 0.0
     max_prompt = 0
     reason = ""
@@ -273,7 +275,7 @@ async def run_turn(
                 async for ev in stream:
                     if isinstance(ev, TextDelta):
                         text.append(ev.text)
-                        yield Token(ev.text, rounds)
+                        yield Token(ev.text, model_calls)
                     elif isinstance(ev, ToolCalls):
                         calls.extend(ev.calls)
                     elif isinstance(ev, LLMDone):
@@ -284,6 +286,7 @@ async def run_turn(
         except LLMError as e:
             yield fail("llm", str(e))
             return
+        model_calls += 1
 
         assistant: dict[str, Any] = {"role": "assistant", "content": "".join(text)}
         if calls:
@@ -293,14 +296,17 @@ async def run_turn(
         if not calls:  # 답이 나왔다
             cites = find_citations(assistant["content"], conv)
             unverified = [c.locator for c in cites if not c.verified]
-            if guard and unverified and rechecks < MAX_RECHECKS and rounds < MAX_ROUNDS:
+            if guard and unverified and rechecks < MAX_RECHECKS:
                 rechecks += 1
-                rounds += 1
                 step = conv.next_step()
+                # 도구가 아니라 근거 검사를 단계로 보여 주는 가짜 단계다(설계 문서 6.4·6.5)
                 yield StepStart(step, "check_citations", {"unverified": unverified})
-                conv.messages.append({"role": "user", "content": RECHECK_NOTE.format(cited=", ".join(unverified))})
+                note = {"role": "user", "content": RECHECK_NOTE.format(cited=", ".join(unverified))}
+                conv.messages.append(note)
+                transient += [assistant, note]
                 yield StepEnd(step, False, f"검색된 적 없는 근거 {', '.join(unverified)} — 검색한 뒤 다시 답하게 함")
                 continue
+            conv.messages[:] = [m for m in conv.messages if not any(m is t for t in transient)]
             for c in cites:
                 yield c
             yield Done(
@@ -312,6 +318,7 @@ async def run_turn(
                 num_ctx=opts.num_ctx,
                 truncated=reason == "length",
                 rechecks=rechecks,
+                model_calls=model_calls,
             )
             return
 
