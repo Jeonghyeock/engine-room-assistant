@@ -382,3 +382,61 @@ def test_a_chunk_seen_before_is_given_by_number_only():
     assert seen == {"n": 1, "source": "manual", "locator": "매뉴얼 4.4", "title": CHUNK_44["title"], "text": SEEN}
     assert new["n"] == 2 and new["text"] == CHUNK_D["text"]
     assert [(c.n, c.verified) for c in events if isinstance(c, Citation)] == [(1, True)]  # 다시 준 번호도 인용할 수 있다
+
+
+CHUNK_43 = {"id": "manual:매뉴얼 4.3", "source": "manual", "locator": "매뉴얼 4.3", "title": "4.3 필터 차압 높음과 필터 전환", "text": "대기 쪽 필터로 전환한다.", "score": 0.7}
+
+
+def _results(msg):
+    return json.loads(msg["content"])["results"]
+
+
+def test_after_the_context_came_near_the_limit_seen_chunks_are_given_in_full_again():
+    """#24 리뷰: 넘치면 Ollama가 오래된 메시지(그 본문)를 잘라 내, SEEN이 사라진 본문을 가리켰다."""
+    box = FakeBox({"search_docs": [ToolResult(True, {"results": [CHUNK_44]}), ToolResult(True, {"results": [CHUNK_44]})]})
+    conv = Conversation()
+    run(conv, "첫 질문", FakeLLM(calls(("search_docs", {"query": "a"})), answer("답 [1].", prompt=7000)), box)  # 8192의 85%
+    assert not conv.seen_safe
+    llm = FakeLLM(answer("우회할 수 없다 [1]."))
+    run(conv, "이어서", llm, box)
+    again = _results(llm.seen[0][-1])[0]
+    assert again["n"] == 1 and again["text"] == CHUNK_44["text"]  # 같은 번호, 본문째
+
+
+def test_rolled_back_chunk_is_given_in_full_with_a_fresh_number():
+    """#24 리뷰: 되돌린 차례의 조각이 _by_id에 남으면 SEEN으로 주는데, 그 본문은 기록에 없다."""
+    box = FakeBox({"search_docs": [ToolResult(True, {"results": [CHUNK_44]}), ToolResult(True, {"results": [CHUNK_D]}), ToolResult(True, {"results": [CHUNK_D, CHUNK_44]})]})
+    conv = Conversation()
+    run(conv, "q1", FakeLLM(calls(("search_docs", {"query": "a"})), answer("답 [1].")), box)
+
+    async def broken(messages, tools, opts):
+        raise LLMError("멈춤")
+        yield  # noqa
+
+    assert isinstance(run(conv, "q2", broken, box)[-1], Error)  # 자동 검색으로 D가 [2]를 받은 뒤 모델 오류 → 되돌림
+    llm = FakeLLM(answer("근거 [2], [1]."))
+    run(conv, "q3", llm, box)
+    d, c44 = _results(llm.seen[0][-1])
+    assert d["n"] == 2 and d["text"] == CHUNK_D["text"]
+    assert c44["n"] == 1 and c44["text"] == SEEN
+    assert any(m["role"] == "tool" and CHUNK_44["text"] in m["content"] for m in llm.seen[0])  # SEEN [1]의 본문은 기록에 있다
+
+
+def test_a_second_search_in_the_same_turn_gets_seen_and_the_summary_says_so():
+    box = FakeBox({"search_docs": [ToolResult(True, {"results": [CHUNK_44]}), ToolResult(True, {"results": [CHUNK_44, CHUNK_43]})]})
+    conv = Conversation()
+    llm = FakeLLM(calls(("search_docs", {"query": "a"})), calls(("search_docs", {"query": "b"})), answer("답 [1] [2]."))
+    events = run(conv, "q1", llm, box)
+    seen, new = _results(llm.seen[2][-1])
+    assert seen["text"] == SEEN and new == {"n": 2, "source": "manual", "locator": "매뉴얼 4.3", "title": CHUNK_43["title"], "text": CHUNK_43["text"]}
+    assert [e.summary for e in events if isinstance(e, StepEnd)][-1] == "조각 2개 [1, 2] · 앞에서 받은 1개는 번호만"
+
+
+def test_after_a_recheck_and_a_new_search_the_full_text_stays_in_the_first_result():
+    box = FakeBox({"search_docs": [ToolResult(True, {"results": [CHUNK_44]})] * 3})
+    conv = Conversation()
+    run(conv, "q1", FakeLLM(calls(("search_docs", {"query": "a"})), answer("답 [1].")), box)
+    events = run(conv, "q2", FakeLLM(answer("근거 [9]."), calls(("search_docs", {"query": "b"})), answer("근거 [1].")), box)
+    assert [(c.n, c.verified) for c in events if isinstance(c, Citation)] == [(1, True)]
+    tool_texts = [m["content"] for m in conv.messages if m["role"] == "tool"]
+    assert CHUNK_44["text"] in tool_texts[0] and all(SEEN in t for t in tool_texts[1:])

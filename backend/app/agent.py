@@ -36,6 +36,9 @@ RECHECK_NOTE = (
     "search_docs로 매뉴얼(필요하면 규정)을 찾은 뒤, 검색 결과의 번호로만 근거를 달아 다시 답하라."
 )
 SEEN = "(앞에서 받은 조각 — 본문은 위의 검색 결과에 있다)"
+# 대화의 문맥이 한 번이라도 num_ctx의 이만큼에 닿으면 SEEN을 쓰지 않고 본문째 다시 준다. 넘치면 Ollama가 오래된
+# 메시지(그 본문이 든 검색 결과)부터 잘라 내, SEEN이 사라진 본문을 가리키고 지어낸 절차에 확인된 [n]이 붙었다(#24 리뷰).
+SEEN_LIMIT_RATIO = 0.75
 # 문맥이 num_ctx를 넘으면 Ollama는 오래된 대화(앞쪽 질문·도구 결과)를 잘라낸 뒤 남은 길이를 보고한다.
 # 그래서 보고된 길이는 num_ctx를 넘지 않는다 — 이만큼 가까우면 잘렸을 수 있다고 본다.
 CONTEXT_LIMIT_RATIO = 0.9
@@ -111,6 +114,8 @@ class Conversation:
     messages: list[dict] = field(default_factory=list)
     chunks: dict[int, dict] = field(default_factory=dict)  # 번호 → 검색 조각
     alarms: list[str] = field(default_factory=list)  # 마지막으로 본 알람 이름 — 이어지는 질문의 검색어에 붙인다
+    largest_prompt: int = 0  # 이 대화에서 가장 컸던 문맥(토큰)과 그때의 num_ctx — SEEN을 써도 되는지 본다
+    num_ctx: int = 0
     _by_id: dict[str, int] = field(default_factory=dict, init=False, repr=False, compare=False)
     _steps: int = field(default=0, init=False, repr=False, compare=False)
 
@@ -125,14 +130,20 @@ class Conversation:
         out = []
         for r in results:
             n = self._by_id.get(r["id"])
-            if n is not None:
+            if n is None:
+                n = len(self.chunks) + 1
+                self._by_id[r["id"]] = n
+                self.chunks[n] = r
+            elif self.seen_safe:
                 out.append({"n": n, "source": r["source"], "locator": r["locator"], "title": r["title"], "text": SEEN})
                 continue
-            n = len(self.chunks) + 1
-            self._by_id[r["id"]] = n
-            self.chunks[n] = r
             out.append({"n": n, "source": r["source"], "locator": r["locator"], "title": r["title"], "text": r["text"]})
         return out
+
+    @property
+    def seen_safe(self) -> bool:
+        """앞에서 받은 조각을 번호만 다시 줘도 되는가 — 문맥이 한도 가까이 간 적이 있으면 그 본문이 잘렸을 수 있다."""
+        return not self.num_ctx or self.largest_prompt < self.num_ctx * SEEN_LIMIT_RATIO
 
     def rollback(self, messages_len: int, chunks_len: int) -> None:
         """실패하거나 중단된 차례를 되돌린다 — 그 차례의 메시지와, 그 차례에 번호를 붙인 검색 조각까지.
@@ -230,7 +241,8 @@ def _summary(name: str, res: ToolResult, numbered: list[dict] | None) -> str:
     d = res.data or {}
     if name == "search_docs" and numbered is not None:
         ns = [r["n"] for r in numbered]
-        return f"조각 {len(ns)}개 [{', '.join(map(str, ns))}]" if ns else "결과 없음"
+        seen = sum(r["text"] == SEEN for r in numbered)
+        return (f"조각 {len(ns)}개 [{', '.join(map(str, ns))}]" + (f" · 앞에서 받은 {seen}개는 번호만" if seen else "")) if ns else "결과 없음"
     if name == "list_active_alarms":
         return f"알람 {len(d.get('alarms', []))}개"
     if name == "read_sensors":
@@ -328,6 +340,7 @@ async def run_turn(
                             completion_tokens += ev.completion_tokens
                             eval_seconds += ev.eval_seconds
                             max_prompt = max(max_prompt, ev.prompt_tokens)
+                            conv.largest_prompt, conv.num_ctx = max(conv.largest_prompt, ev.prompt_tokens), opts.num_ctx
                             reason = ev.reason
             except LLMError as e:
                 yield fail("llm", str(e))
