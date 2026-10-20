@@ -70,3 +70,45 @@ def test_once_reports_ollama_errors_and_missing_durations():
         once(client([{"error": "model not found"}]), "http://t", {})
     res = once(client([{"message": {"content": "답"}}, {"done": True, "prompt_eval_count": 100, "eval_count": 5}]), "http://t", {})
     assert res["first_text_s"] is not None and res["prompt_s"] is None and rate(res["prompt_tokens"], res["prompt_s"]) is None
+
+
+def test_settings_skip_the_embedding_model_load():
+    """평가 중 마지막 적재는 보통 bge-m3(bert) — 그 설정을 대화 모델 것처럼 적지 않는다(#27 리뷰)."""
+    chat = ('msg="starting llama-server" cmd=llama-server\n- kv   0: general.architecture str = qwen3\n'
+            "llama_context: flash_attn            = auto\n"
+            "llama_kv_cache: size = 1152.00 MiB (  8192 cells,  36 layers,  1/1 seqs), K (f16):  576.00 MiB, V (f16):  576.00 MiB\n"
+            "resolve_fused_ops: Flash Attention enabled\n")
+    embed = ('msg="starting llama-server" cmd=llama-server\n- kv   0: general.architecture str = bert\n'
+             "llama_context: flash_attn            = auto\nresolve_fused_ops: Flash Attention disabled\n")
+    assert applied(chat + embed) == "FA auto→enabled, KV K f16·V f16 1152 MiB"
+
+
+def test_judge_uses_the_evaluation_context_size(monkeypatch):
+    """판정이 평가와 다른 num_ctx를 쓰면 Ollama가 대화·판정 사이마다 모델을 다시 올린다(16k 평가에서 45번 적재)."""
+    import asyncio
+
+    from evals import scenarios
+    from evals.scenarios import Turn
+
+    seen = []
+
+    async def fake_judge(ask, answer, criterion, num_ctx=8192):
+        seen.append(num_ctx)
+        return True, "예"
+
+    monkeypatch.setattr(scenarios, "judge", fake_judge)
+    asyncio.run(scenarios.judge_turn(Turn("q", answer="답"), {"judge_pass": ["기준"]}, 16384))
+    assert seen == [16384]
+
+
+def test_a_new_row_goes_into_the_first_table_even_after_other_sections(tmp_path, monkeypatch):
+    from evals import serving
+
+    monkeypatch.setattr(serving, "RESULTS", tmp_path / "serving.md")
+    serving.append("| 줄 1 |\n")
+    path = tmp_path / "serving.md"
+    path.write_text(path.read_text(encoding="utf-8") + "\n주의 사항\n", encoding="utf-8")
+    serving.append("\n## 임베딩\n\n| 표 2 |\n")
+    serving.append("| 줄 2 |\n")
+    text = path.read_text(encoding="utf-8")
+    assert text.index("| 줄 1 |") < text.index("| 줄 2 |") < text.index("주의 사항") < text.index("## 임베딩")

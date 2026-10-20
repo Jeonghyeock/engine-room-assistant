@@ -12,3 +12,5 @@
 | S3 | 지금 울리는 알람을 분석하고 조치를 권고해 줘 | 5/5 | 4/5 | 5/5 | 3/5 | 4/5 | 3/5 | 5/5 | 5/5 | 1/5 | 2/5 | 0/5 | 2/5 |
 
 답 전문: `evals/results/transcripts/phase5-4b/`
+
+※ `qwen3:4b`는 Qwen3-4B-Thinking-2507이다(Ollama 템플릿이 답 앞에 늘 `<think>`를 붙여 think=false가 먹지 않는다 — 생각이 답 본문으로 새어 나와 길이 한도에서 잘렸다). 기본 서버(11434, FA auto→enabled, KV f16, num_ctx 8192), 판정 qwen3:8b. 생각하지 않는 4b는 `scenarios-phase5-4b-instruct.md`(Qwen3-4B-Instruct-2507).

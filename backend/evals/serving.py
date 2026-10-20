@@ -222,7 +222,11 @@ def unload_all(url: str) -> None:
 
 
 def applied(log: str) -> str:
-    """따로 띄운 서버의 로그에서 실제로 적용된 flash attention과 KV 캐시 형식·크기."""
+    """따로 띄운 서버의 로그에서 실제로 적용된 flash attention과 KV 캐시 형식·크기. 임베딩 모델(bert)의 적재는 뺀다 —
+    평가 중에는 마지막 적재가 보통 bge-m3라, 그것의 설정을 대화 모델 것처럼 적을 수 있었다(#27 리뷰)."""
+    blocks = re.split(r'msg="starting llama-server"', log)
+    chat = [b for b in blocks if not re.search(r"general\.architecture\s+str\s*=\s*bert", b)]
+    log = "".join(chat) if len(blocks) > 1 else log
     asked = re.findall(r"flash_attn\s*=\s*(\w+)", log)  # auto / enabled / disabled
     resolved = re.findall(r"Flash Attention (enabled|disabled)", log)  # auto일 때만 나오는 판정
     kv = re.findall(r"K \((\w+)\):\s*([\d.]+) MiB, V \((\w+)\):\s*([\d.]+) MiB", log)
@@ -320,6 +324,14 @@ def append(text: str) -> None:
         RESULTS.write_text(
             "# 로컬 서빙 측정\n\n`uv run python -m evals.serving`의 결과를 한 줄씩 더한다(설계 6.7). 재는 방법은 그 파일의 docstring. "
             "시간·속도는 반복(기본 3번)의 중앙값, 토큰 수는 첫 반복.\n\n" + HEADER, encoding="utf-8")
+    current = RESULTS.read_text(encoding="utf-8")
+    if text.startswith("| ") and "\n## " in current:  # 측정 줄은 첫 표의 마지막 줄 뒤에 — 뒤에 주의 사항·임베딩 절이 있어도
+        head, sep, tail = current.partition("\n## ")
+        lines = head.split("\n")
+        last = max(i for i, line in enumerate(lines) if line.startswith("| "))
+        lines.insert(last + 1, text.rstrip("\n"))
+        RESULTS.write_text("\n".join(lines) + sep + tail, encoding="utf-8")
+        return
     with RESULTS.open("a", encoding="utf-8") as f:
         f.write(text)
 
@@ -379,7 +391,7 @@ def main() -> None:
     sc = sub.add_parser("scenarios", help="그 설정으로 Ollama를 따로 띄워 시나리오 평가(evals.scenarios)를 돌린다")
     sc.add_argument("--fa", choices=["0", "1"])
     sc.add_argument("--kv", choices=["f16", "q8_0", "q4_0"])
-    sc.add_argument("rest", nargs=argparse.REMAINDER, help="-- 뒤는 evals.scenarios의 인자")
+    sc.add_argument("rest", nargs=argparse.REMAINDER, help="-- 뒤는 evals.scenarios의 인자(-- 는 꼭 붙인다)")
     a = ap.parse_args()
     if a.cmd == "record":
         asyncio.run(_record())
@@ -387,7 +399,14 @@ def main() -> None:
         rest = a.rest[1:] if a.rest[:1] == ["--"] else a.rest
         with server(a.fa, a.kv) as (url, read_log):  # 문서 검색의 질의 임베딩도 이 서버로 간다(PASS_ENV)
             subprocess.run([sys.executable, "-m", "evals.scenarios", *rest], env={**os.environ, "OLLAMA_URL": url}, check=True)
-            print("서버에 실제 적용:", applied(read_log()))
+            note = (f"\n※ 서버: 따로 띄운 Ollama(FLASH_ATTENTION={a.fa or '기본'}, KV_CACHE_TYPE={a.kv or '기본'}) — "
+                    f"로그에서 읽은 실제 적용: {applied(read_log())}\n")
+        print(note.strip())
+        if "--label" in rest:  # 결과 파일에도 남긴다 — 머리말만으로는 어느 서버 설정인지 모른다(#27 리뷰)
+            out = HERE / "results" / f"scenarios-{rest[rest.index('--label') + 1]}.md"
+            if out.exists():
+                with out.open("a", encoding="utf-8") as f:
+                    f.write(note)
     elif a.cmd == "run":
         text = table_row(a.label, a.model, a.num_ctx, measure(a.fa, a.kv, a.model, a.num_ctx, a.repeat), a.note)
         append(text)

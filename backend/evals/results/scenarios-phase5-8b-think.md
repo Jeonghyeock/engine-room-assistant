@@ -12,3 +12,5 @@
 | S3 | 지금 울리는 알람을 분석하고 조치를 권고해 줘 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 |
 
 답 전문: `evals/results/transcripts/phase5-8b-think/`
+
+※ 기본 서버(11434, FA auto→enabled, KV f16), 판정 qwen3:8b(think 끔).

@@ -13,4 +13,4 @@
 
 답 전문: `evals/results/transcripts/phase5-8b-q8-16k/`
 
-※ 이 실행은 따로 띄운 Ollama(FLASH_ATTENTION=1, KV_CACHE_TYPE=q8_0)에서 대화는 num_ctx 16384, 판정은 8192로 불러 모델을 45번 다시 올렸다(서버 로그). 품질 칸은 유효하지만 시간은 비교하지 말 것 — 판정도 평가와 같은 num_ctx를 쓰게 고친 뒤 다시 돌린 결과가 `scenarios-phase5-8b-q8-16k-2.md`(적재 2번, 차례당 중앙값 11.4초).
+※ 이 실행은 따로 띄운 Ollama(FLASH_ATTENTION=1, KV_CACHE_TYPE=q8_0)에서 대화는 num_ctx 16384, 판정은 8192로 불러, 시나리오 실행마다 대화(16k)↔판정(8k) 전환으로 qwen3:8b를 30번, 그 사이 질의 임베딩용 bge-m3를 15번 — 모두 45번 적재했다(서버 로그). 품질 칸은 유효하지만 시간은 비교하지 말 것 — 판정도 평가와 같은 num_ctx를 쓰게 고친 뒤 다시 돌린 결과가 `scenarios-phase5-8b-q8-16k-2.md`(적재 2번, 차례당 중앙값 11.4초).
