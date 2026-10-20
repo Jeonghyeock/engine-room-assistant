@@ -14,7 +14,7 @@
 | 2 | MCP 서버(가상 알람 감시 시스템, 문서 검색), 시나리오 3개 | 완료 |
 | 3 | 에이전트 루프, 시나리오 평가 | 끝냄 — S1(다른 실린더 읽기)·전제 오류·함정 1건이 기준 미달, [못 한 것](#못-한-것다음-후보)에 기록 |
 | 4 | SSE API와 화면, Playwright E2E | 완료 — 설계 8장 기준을 채움(E2E는 가짜 모델·도구, 진짜 모델은 CI 밖 기록 1건) |
-| 5 | 로컬 서빙 측정 | 완료 — 권장 설정: qwen3:8b + KV 캐시 q8_0, 임베딩은 CPU, thinking 끔 |
+| 5 | 로컬 서빙 측정 | 완료 — 권장 설정: qwen3:8b + flash attention 켬 + KV 캐시 q8_0, 임베딩은 CPU, thinking 끔 |
 
 ## 1단계 — 문서 수집·검색
 
@@ -349,7 +349,7 @@ PR마다 맥락 없이 따로 돌린 리뷰를 받고, 지적별 반영/유지�
 
 ## 5단계 — 로컬 서빙 측정
 
-RTX 4060 Ti 8GB에서 Ollama 0.40.4로 쟀다. 측정 동안 GPU를 많이 쓰는 다른 앱(안드로이드 에뮬레이터)은 껐다. 측정 도구는 `evals/serving.py`다([#26](https://github.com/Jeonghyeock/engine-room-assistant/pull/26)).
+RTX 4060 Ti 8GB에서 Ollama 0.40.4로 쟀다. 측정 동안 GPU를 많이 쓰는 다른 앱(안드로이드 에뮬레이터)은 껐다. 다른 앱(Edge·Slack 등, GPU 메모리 약 780 MiB)은 켜 둔 채였다. 측정 도구는 `evals/serving.py`다([#26](https://github.com/Jeonghyeock/engine-room-assistant/pull/26)).
 
 - **재는 방법**: S2 첫 차례에서 에이전트가 모델을 부른 다섯 번을 녹화하고, 설정마다 그 차례를 그대로 재생한다.
   - 뒤 호출은 앞 호출에 도구 결과를 이어 붙인 것이라, 앞부분은 Ollama의 프롬프트 캐시에 있다. 그래서 첫 호출(처음부터 읽기)과 이어지는 호출(새로 붙은 부분만 읽기 — 증분)을 따로 잰다.
@@ -371,6 +371,7 @@ RTX 4060 Ti 8GB에서 Ollama 0.40.4로 쟀다. 측정 동안 GPU를 많이 쓰�
 
 - 전체 표와 행별 주의(4k에서 답 호출이 잘림, q4_0, 4b Thinking 변형 등): [serving.md](backend/evals/results/serving.md).
 - 16k·32k는 창을 잡기만 했다. 재생한 프롬프트는 약 4.8k라, 긴 문맥을 실제로 채웠을 때의 속도는 재지 않았다.
+- GPU에 올라간 몫: %는 Ollama `/api/ps`의 메모리 비율(`size_vram / size`)이고, 층 수는 서버 로그다. 기준이 달라 FA 끔은 92%인데 층은 36/37이다.
 - 설정마다 한 번씩 돌렸으므로 몇 % 차이는 잡음과 가를 수 없다. 2배 같은 차이만 읽는다.
 
 ### 질의 임베딩을 어디에 둘까
@@ -382,6 +383,8 @@ RTX 4060 Ti 8GB에서 Ollama 0.40.4로 쟀다. 측정 동안 GPU를 많이 쓰�
 
 ### 시나리오 평가 (씨앗 5, 판정은 qwen3:8b)
 
+칸은 **전체(정해진 검사)** 통과 수다. 판정 모델은 표시만 한다(3단계).
+
 | 설정 | S1 | S2 분석 | S2 우회 | S3 | 차례당 시간 | 생성 토큰 |
 |---|---|---|---|---|---|---|
 | qwen3:8b 기본(4단계) | 0/5 | 5/5 | 5/5 | 5/5 | 12.3초 | 503 |
@@ -389,23 +392,29 @@ RTX 4060 Ti 8GB에서 Ollama 0.40.4로 쟀다. 측정 동안 GPU를 많이 쓰�
 | 8b · thinking | 1/5 | 4/5 | 4/5 | 5/5 | 53.4초 | 2426 |
 | **qwen3:4b instruct** | **5/5** | 5/5 | 4/5 | 5/5 | 28.0초 | 1558 |
 
-- 결과 파일: `scenarios-phase5-8b-q8-16k-2`, `-8b-think`, `-4b-instruct`, `-4b`(Thinking 변형 — 생각을 끌 수 없어 쓸 수 없는 값).
+- 결과 파일: [8b 기본](backend/evals/results/scenarios-phase4-context-trim.md), [16k·KV q8_0](backend/evals/results/scenarios-phase5-8b-q8-16k-2.md), [thinking](backend/evals/results/scenarios-phase5-8b-think.md), [4b instruct](backend/evals/results/scenarios-phase5-4b-instruct.md), [4b Thinking 변형](backend/evals/results/scenarios-phase5-4b.md)(생각을 끌 수 없어 쓸 수 없는 값).
+- 16k·KV q8_0의 11.4초(기본 12.3초)는 생성 토큰이 적었던 만큼(436 대 503)이다. 서버 설정의 효과로 읽지 않는다.
+- thinking은 S2 분석에서 도구·인용·필수 근거가, 우회에서 문맥 여유가 4/5였다.
+- 4b instruct의 우회 4/5는 문맥 여유 검사에서 떨어졌다. 답이 길어 8k 창이 빨리 찬다.
 - KV q8_0은 5개 표본에서 차이를 찾지 못했다. 다만 S1은 모두 0/5이고 나머지는 5/5 천장이라 검출력이 낮다.
 
 ### 결론
 
 - **8GB GPU에서는 VRAM이 병목이다.**
-  - 모델이 GPU에 다 들어가지 못하면 Ollama가 층 일부를 CPU로 보내고, 생성 속도가 절반 이하로 떨어진다(16k f16, 32k q8_0).
-  - flash attention을 끄면 어텐션 계산 버퍼가 커져(112 → 316 MiB) 층 하나가 CPU로 간다.
-  - 다른 앱이 VRAM을 쓸 때 0.7~4.6 tok/s까지 떨어진 것(4단계 기록)도 같은 원인으로 본다.
-- **권장 설정**: qwen3:8b, flash attention 켬(기본 `auto`로 켜짐), **KV 캐시 q8_0**(Ollama에 `OLLAMA_KV_CACHE_TYPE=q8_0`).
-  - 생성 속도를 지키며 KV를 절반으로 줄여, 문맥 창을 16k로 늘려도 GPU 안에 든다.
+  - 층 6~8개가 CPU로 가면(16k f16 31/37층, 32k q8_0 29/37층) 생성 속도가 절반 이하로 떨어진다(43 → 18~20 tok/s).
+  - flash attention을 끄면 어텐션 계산 버퍼가 커져(112 → 316 MiB) 층 하나가 CPU로 간다. 생성은 15%, 처리는 37~51% 느려졌다. 이 값에는 FA 커널이 없는 효과와 층 하나가 CPU로 간 효과가 섞여 있다.
+  - 4단계 실제 실행에서 다른 앱이 GPU를 함께 쓸 때는 0.7~4.6 tok/s였다. 그때 GPU 메모리가 7830/8188 MiB로 거의 차 있어 VRAM 부족도 한 원인일 수 있다. 하지만 GPU 사용률도 99~100%였다 — 메모리 부족인지 계산 경합인지는 재지 않았다.
+- **권장 설정**: qwen3:8b, Ollama 서버에 `OLLAMA_FLASH_ATTENTION=1`과 **`OLLAMA_KV_CACHE_TYPE=q8_0`**, `num_ctx` 16384.
+  - 잰 그대로의 조합이다. 기본 `auto`에 q8_0만 준 경우는 재지 않았다.
+  - 생성 속도를 지키며 KV를 절반으로 줄여, 16k 창을 잡아도 모델이 GPU에 다 든다(f16이면 80%만 올라가 19.7 tok/s). 다만 창만 잡고 약 4.8k만 채웠다 — 16k를 채웠을 때의 속도는 모른다.
   - 이어지는 질문이 길어져도(4단계 "못 한 것 — 문맥") 여유가 생긴다.
-- **질의 임베딩은 CPU**에 둔다. GPU에 두면 대화 모델이 밀려나 다음 대화가 4초 넘게 늦는다. 설계 9장의 결정이 맞았다.
-- **thinking은 끈다.** 시간 4.3배, 토큰 4.8배인데 S1은 1/5로 거의 그대로였다.
+  - `num_ctx`는 앱 코드 값이다. 명령줄은 `--num-ctx 16384`로 되지만, API·화면은 `ChatOptions.num_ctx`(`app/llm.py`, 8192 고정)를 바꿔야 한다. 아직 바꾸지 않았다.
+- **질의 임베딩은 CPU**에 둔다. GPU에 두면 대화 모델이 밀려나, 검색할 때마다 다음 모델 호출이 약 4.25초 늦는다(0.41 → 4.66초). 설계 9장의 결정이 맞았다.
+- **thinking은 끈다.** 시간 4.3배, 토큰 4.8배인데 S1은 1/5로 거의 그대로였고, S2 분석·우회는 4/5로 오히려 떨어졌다.
 - **새 4B instruct(Qwen3-4B-Instruct-2507)는 다음 비교 후보다.**
-  - 지금까지 어떤 설정도 못 넘은 S1을 5/5로 통과했다. 다른 실린더들을 `read_sensors`로 읽었다.
-  - 하지만 답이 8b의 3배라 차례가 28초다. 초안에서 근거를 지어내 근거 검사에 걸렸고, 사람이 읽으면 판단이 흔들린 곳도 있다(1분 5.6°C 변화를 "물리적으로 어려운 수치"라며 센서 고장을 의심 — 매뉴얼 5.3 기준은 10°C).
+  - S1 검사가 `read_sensors`를 필수로 본 뒤로 8b가 어떤 설정에서도 1/5를 넘지 못한 S1을 5/5로 통과했다. 다른 실린더들을 `read_sensors`로 읽었다.
+  - 하지만 차례가 28초다(8b 12.3초). 첫 질문 15번 모두 검색된 적 없는 근거를 붙인 초안을 썼다가 근거 검사로 되돌려 다시 썼고(16k·q8_0 8b는 0번), 최종 답도 길다(첫 질문 답 중앙값 1072자, 8b 기본 454자). 생성 토큰은 3.1배다.
+  - 사람이 읽으면 판단이 흔들린 곳도 있다(1분 5.6°C 변화를 "물리적으로 어려운 수치"라며 센서 고장을 의심 — 매뉴얼 5.3 기준은 10°C).
   - 표본 5개로는 8b를 바꿀 근거가 부족하다.
 
 ### 5단계에서 배운 것
@@ -422,8 +431,9 @@ RTX 4060 Ti 8GB에서 Ollama 0.40.4로 쟀다. 측정 동안 GPU를 많이 쓰�
 
 - **긴 문맥을 실제로 채운 측정**: 16k 창에 약 4.8k만 채웠다. 대화가 길어졌을 때의 처리 속도는 모른다.
 - **4B instruct와 8b의 제대로 된 비교**: 씨앗을 늘리고, 답 길이를 줄이는 프롬프트와 함께 재야 한다.
+- **다른 앱이 GPU를 쓸 때(경합) 측정**: LDPlayer만 끄고 쟀다(다른 앱 약 780 MiB는 켜 둠). 4단계의 0.7~4.6 tok/s가 메모리 부족인지 계산 경합인지 가르려면, 같은 설정을 다른 앱을 켠 채로 다시 재야 한다.
 - **설정마다 한 번씩만** 돌렸다. 퍼짐(최소~최대)을 남기지 않았다.
-- **권장 설정을 코드 기본값으로 바꾸지 않았다.** KV 캐시 형식은 Ollama 서버 설정이라, README에만 적었다.
+- **권장 설정을 코드 기본값으로 바꾸지 않았다.** flash attention·KV 캐시 형식은 Ollama 서버 설정이라 README에만 적었다. `num_ctx`는 코드 값(`app/llm.py`의 `ChatOptions`, 8192)이라 바꿀 수 있지만, 16k를 채운 측정이 없어 미뤘다.
 - 다른 모델 계열·양자화(Q5·Q8 가중치), LM Studio·llama.cpp 직접 실행은 재지 않았다.
 
 ## 실행
@@ -453,8 +463,9 @@ uv run python -m app.cli --scenario S2 "지금 울리는 알람을 분석하고 
 uv run python -m evals.scenarios --label 이름   # 시나리오 평가(S1~S3 × 씨앗 5) → evals/results/
 uv run python -m evals.judge_check             # 판정 모델 회귀 점검 → evals/results/judge-check.md
 uv run python -m evals.serving record          # 서빙 측정용으로 S2 차례의 모델 호출을 녹화(5단계)
-uv run python -m evals.serving run --label 이름 [--model ..] [--num-ctx ..] [--fa 0|1] [--kv f16|q8_0]   # 그 설정으로 Ollama를 11435에 띄워 측정
+uv run python -m evals.serving run --label 이름 [--model ..] [--num-ctx ..] [--fa 0|1] [--kv f16|q8_0|q4_0]   # 그 설정으로 Ollama를 11435에 띄워 측정
 uv run python -m evals.serving embed           # 질의 임베딩을 CPU·GPU에 둘 때
+uv run python -m evals.serving scenarios --fa 1 --kv q8_0 -- --label 이름 --num-ctx 16384   # 그 설정의 서버로 시나리오 평가(-- 뒤는 evals.scenarios 인자)
 
 # API(4단계) — 화면이 쓴다. Ollama와 색인이 있어야 답한다.
 # 종료 시간 제한이 없으면 Ctrl+C가 돌고 있는 차례가 끝날 때까지 기다린다
