@@ -1,52 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  ApiError,
-  getAlarms,
-  getScenarios,
-  startScenario,
-  streamChat,
-  type Alarm,
-  type ChatEvent,
-  type Citation,
-  type DoneInfo,
-  type Scenario,
-} from "./api";
+import { ApiError, getAlarms, getScenarios, startScenario, streamChat, type Alarm, type Citation, type Scenario } from "./api";
+import { applyEvent, newTurn, rolledBack, split, type Step, type Turn } from "./turn";
 
 const ANALYZE_ALL = "지금 울리는 알람을 분석하고 조치를 권고해 줘";
-
-type Step = { id: number; tool: string; args: Record<string, unknown>; auto: boolean; ok?: boolean; summary?: string };
-
-type Turn = {
-  question: string;
-  steps: Step[];
-  rounds: string[]; // 모델 호출마다 쓴 글 — 마지막이 답, 앞은 도구를 부르기 전의 말이나 근거 검사로 되돌린 초안
-  citations: Citation[];
-  done?: DoneInfo;
-  error?: string;
-  status: "streaming" | "done" | "stopped" | "error";
-};
-
-function applyEvent(t: Turn, e: ChatEvent): Turn {
-  switch (e.event) {
-    case "step_start":
-      return { ...t, steps: [...t.steps, { ...e.data }] };
-    case "step_end":
-      return { ...t, steps: t.steps.map((s) => (s.id === e.data.id ? { ...s, ok: e.data.ok, summary: e.data.summary } : s)) };
-    case "token": {
-      const rounds = [...t.rounds];
-      rounds[e.data.round] = (rounds[e.data.round] ?? "") + e.data.text;
-      return { ...t, rounds };
-    }
-    case "citation":
-      return { ...t, citations: [...t.citations, e.data] };
-    case "done":
-      return { ...t, done: e.data, status: "done" };
-    case "error":
-      return { ...t, error: `${e.data.code}: ${e.data.message}`, status: "error" };
-    default:
-      return t;
-  }
-}
 
 function stepLabel(s: Step): string {
   if (s.tool === "check_citations") return "근거 검사"; // 무엇을 되돌렸는지는 step_end의 요약이 말한다
@@ -56,14 +12,15 @@ function stepLabel(s: Step): string {
   return `${s.auto ? "(자동) " : ""}${s.tool}(${args})`;
 }
 
-/** 답의 [n]을 누르면 근거 패널에서 그 조각을 연다. */
-function AnswerText({ text, citations, onCite }: { text: string; citations: Citation[]; onCite: (n: number) => void }) {
+/** 답의 [n]을 누르면 근거 패널에서 그 조각을 연다. 되돌린 차례의 [n]은 버튼으로 만들지 않는다 —
+ *  서버가 되돌린 번호는 다음 질문에서 다른 조각에 다시 붙을 수 있다. */
+function AnswerText({ text, citations, live, onCite }: { text: string; citations: Citation[]; live: boolean; onCite: (n: number) => void }) {
   const parts = text.split(/(\[\d+\])/g);
   return (
     <p className="answer">
       {parts.map((p, i) => {
         const m = /^\[(\d+)\]$/.exec(p);
-        if (!m) return <span key={i}>{p}</span>;
+        if (!m || !live) return <span key={i}>{p}</span>;
         const n = Number(m[1]);
         const c = citations.find((c) => c.n === n);
         const cls = c === undefined ? "cite" : c.verified ? "cite verified" : "cite unverified";
@@ -78,10 +35,9 @@ function AnswerText({ text, citations, onCite }: { text: string; citations: Cita
 }
 
 function TurnView({ turn, onCite }: { turn: Turn; onCite: (n: number) => void }) {
-  const last = turn.rounds.length - 1;
-  const earlier = turn.rounds.slice(0, Math.max(last, 0)).filter((r) => r?.trim());
-  const answer = last >= 0 ? (turn.rounds[last] ?? "") : "";
+  const { earlier, answer } = split(turn);
   const unverified = turn.citations.filter((c) => !c.verified);
+  const back = rolledBack(turn);
   return (
     <div className="turn">
       <div className="question">{turn.question}</div>
@@ -89,7 +45,7 @@ function TurnView({ turn, onCite }: { turn: Turn; onCite: (n: number) => void })
         <ul className="steps">
           {turn.steps.map((s) => (
             <li key={s.id} className={s.ok === undefined ? "running" : s.ok ? "ok" : "fail"}>
-              <span className="mark">{s.ok === undefined ? "…" : s.ok ? "✓" : "✗"}</span> {stepLabel(s)}
+              <span className="mark">{s.ok === undefined ? (back ? "–" : "…") : s.ok ? "✓" : "✗"}</span> {stepLabel(s)}
               {s.summary && <span className="summary"> → {s.summary}</span>}
             </li>
           ))}
@@ -103,13 +59,13 @@ function TurnView({ turn, onCite }: { turn: Turn; onCite: (n: number) => void })
           ))}
         </details>
       )}
-      {answer && <AnswerText text={answer} citations={turn.citations} onCite={onCite} />}
+      {answer && <AnswerText text={answer} citations={turn.citations} live={!back} onCite={onCite} />}
       {unverified.length > 0 && (
         <div className="warn">⚠ 이번 대화에서 검색된 적 없는 근거: {unverified.map((c) => c.locator).join(", ")}</div>
       )}
       {turn.status === "streaming" && <div className="status">답하는 중…</div>}
-      {turn.status === "stopped" && <div className="status">중단함 — 이 질문은 대화 기록에 남지 않는다.</div>}
       {turn.error && <div className="error">✗ {turn.error}</div>}
+      {back && <div className="status">{turn.status === "stopped" ? "중단함" : "끝까지 답하지 못함"} — 이 질문은 대화 기록에 남지 않는다.</div>}
       {turn.done && (
         <div className="meta">
           {turn.done.tokens} 토큰 · {turn.done.tok_per_s} tok/s · {(turn.done.elapsed_ms / 1000).toFixed(1)}초 · 문맥 {turn.done.max_prompt_tokens}/
@@ -130,37 +86,52 @@ export default function App() {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [selected, setSelected] = useState<number | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notices, setNotices] = useState<string[]>([]);
+  const [switching, setSwitching] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
-  const busy = turns.at(-1)?.status === "streaming";
+  const streaming = turns.at(-1)?.status === "streaming";
+  const busy = streaming || switching;
 
-  const loadAlarms = () =>
-    getAlarms()
-      .then((r) => setAlarms(r.alarms))
-      .catch((e) => setNotice(`알람을 읽지 못했다: ${e.message}`));
+  const notify = (msg: string) => setNotices((ns) => [...ns, msg]);
+
+  async function refresh() {
+    try {
+      const r = await getScenarios();
+      setScenarios(r.scenarios);
+      setCurrent(r.current);
+    } catch (e) {
+      notify(`백엔드에 연결하지 못했다: ${(e as Error).message}`);
+    }
+    try {
+      setAlarms((await getAlarms()).alarms);
+    } catch (e) {
+      notify(`알람을 읽지 못했다: ${(e as Error).message}`);
+    }
+  }
 
   useEffect(() => {
-    getScenarios()
-      .then((r) => {
-        setScenarios(r.scenarios);
-        setCurrent(r.current);
-      })
-      .catch((e) => setNotice(`백엔드에 연결하지 못했다: ${e.message}`));
-    loadAlarms();
+    refresh();
   }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" }); // 새 Chromium은 Promise를 돌려준다 — 효과 함수가 그것을 돌려주면 React가 정리 함수로 부르다 깨진다
   }, [turns]);
 
-  const update = (fn: (t: Turn) => Turn) => setTurns((ts) => [...ts.slice(0, -1), fn(ts[ts.length - 1])]);
+  // 마지막 차례만 바꾼다. 그사이 대화가 비었으면(시나리오 바꾸기) 그대로 둔다.
+  const update = (fn: (t: Turn) => Turn) => setTurns((ts) => (ts.length === 0 ? ts : [...ts.slice(0, -1), fn(ts[ts.length - 1])]));
+
+  function newConversation() {
+    setConversationId(null);
+    setTurns([]);
+    setSelected(null);
+  }
 
   async function ask(question: string) {
     if (!question.trim() || busy) return;
     setInput("");
-    setNotice(null);
-    setTurns((ts) => [...ts, { question, steps: [], rounds: [], citations: [], status: "streaming" }]);
+    setNotices([]);
+    setTurns((ts) => [...ts, newTurn(question)]);
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     try {
@@ -170,8 +141,18 @@ export default function App() {
       });
       update((t) => (t.status === "streaming" ? { ...t, status: "error", error: "스트림이 done 없이 끝났다" } : t));
     } catch (e) {
-      if (ctrl.signal.aborted) update((t) => ({ ...t, status: "stopped" }));
-      else update((t) => ({ ...t, status: "error", error: e instanceof ApiError ? `${e.status} ${e.message}` : String(e) }));
+      if (ctrl.signal.aborted) {
+        update((t) => (t.status === "streaming" ? { ...t, status: "stopped" } : t));
+      } else if (e instanceof ApiError && e.status === 404) {
+        // 서버가 이 대화를 모른다(다른 곳에서 시나리오를 바꿨거나 서버가 다시 떴다) — 새 대화로
+        newConversation();
+        notify("서버에 이 대화가 없다(시나리오가 바뀌었거나 서버가 다시 시작됨) — 새 대화로 다시 물어 주세요.");
+        await refresh();
+      } else {
+        ctrl.abort(); // 읽다가 실패했으면 스트림을 끊어 서버가 그 차례를 정리하게 한다
+        const msg = e instanceof ApiError ? `${e.status} ${e.message}` : String(e);
+        update((t) => (t.status === "streaming" ? { ...t, status: "error", error: msg } : t));
+      }
     } finally {
       abortRef.current = null;
     }
@@ -179,21 +160,23 @@ export default function App() {
 
   async function switchScenario(id: string) {
     if (busy) return;
+    setSwitching(true);
     try {
       const r = await startScenario(id);
       setCurrent(r.current);
-      setConversationId(null);
-      setTurns([]);
-      setSelected(null);
-      await loadAlarms();
+      newConversation();
+      setNotices([]);
+      setAlarms((await getAlarms()).alarms);
     } catch (e) {
-      setNotice(`시나리오를 바꾸지 못했다: ${(e as Error).message}`);
+      notify(`시나리오를 바꾸지 못했다: ${(e as Error).message}`);
+    } finally {
+      setSwitching(false);
     }
   }
 
-  // 같은 대화 안에서 번호는 같은 조각이다(백엔드가 대화마다 번호를 붙인다)
+  // 같은 대화 안에서 번호는 같은 조각이다(백엔드가 대화마다 번호를 붙인다). 되돌린 차례의 인용은 넣지 않는다.
   const citations = new Map<number, Citation>();
-  for (const t of turns) for (const c of t.citations) if (c.n !== null && c.verified) citations.set(c.n, c);
+  for (const t of turns) if (!rolledBack(t)) for (const c of t.citations) if (c.n !== null && c.verified) citations.set(c.n, c);
 
   return (
     <div className="app">
@@ -215,7 +198,8 @@ export default function App() {
         <h2>울리는 알람</h2>
         <ul className="alarms">
           {alarms.map((a) => (
-            <li key={a.tag}>
+            // 한 태그가 경보와 감속을 함께 넘으면 두 줄로 온다 — 태그만으로는 겹친다(#21 리뷰)
+            <li key={`${a.tag}:${a.level}`}>
               <button onClick={() => ask(`${a.name} 알람을 분석하고 조치를 권고해 줘`)} disabled={busy}>
                 <span className={`level level-${a.level}`}>{a.level}</span> {a.name}
                 <span className="value">
@@ -237,20 +221,24 @@ export default function App() {
           {turns.length === 0 && <p className="empty">왼쪽 알람을 누르거나 질문을 입력한다.</p>}
           <div ref={bottomRef} />
         </div>
-        {notice && <div className="error">{notice}</div>}
+        {notices.map((n, i) => (
+          <div key={i} className="error">
+            {n}
+          </div>
+        ))}
         <form
           onSubmit={(e) => {
             e.preventDefault();
             ask(input);
           }}
         >
-          <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="질문 (예: 트립을 잠시 우회해도 되나요?)" disabled={busy} />
-          {busy ? (
+          <input aria-label="질문" value={input} onChange={(e) => setInput(e.target.value)} placeholder="질문 (예: 트립을 잠시 우회해도 되나요?)" disabled={busy} />
+          {streaming ? (
             <button type="button" className="stop" onClick={() => abortRef.current?.abort()}>
               중단
             </button>
           ) : (
-            <button type="submit" disabled={!input.trim()}>
+            <button type="submit" disabled={!input.trim() || switching}>
               보내기
             </button>
           )}
@@ -263,11 +251,13 @@ export default function App() {
           {[...citations.values()]
             .sort((a, b) => (a.n ?? 0) - (b.n ?? 0))
             .map((c) => (
-              <li key={c.n} className={c.n === selected ? "selected" : ""} onClick={() => setSelected(c.n)}>
-                <div className="loc">
-                  [{c.n}] {c.locator}
-                </div>
-                <div className="title">{c.title}</div>
+              <li key={c.n} className={c.n === selected ? "selected" : ""}>
+                <button className="source" onClick={() => setSelected(c.n)} aria-expanded={c.n === selected}>
+                  <span className="loc">
+                    [{c.n}] {c.locator}
+                  </span>
+                  <span className="title">{c.title}</span>
+                </button>
                 {c.n === selected && <div className="snippet">{c.snippet}</div>}
               </li>
             ))}
