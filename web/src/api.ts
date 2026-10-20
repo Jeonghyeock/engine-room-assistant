@@ -30,6 +30,7 @@ export type DoneInfo = {
   elapsed_ms: number;
   rounds: number;
   rechecks: number;
+  model_calls: number; // 마지막 답은 round = model_calls - 1
   max_prompt_tokens: number;
   num_ctx: number;
   truncated: boolean;
@@ -57,7 +58,7 @@ export class ApiError extends Error {
 async function failure(res: Response): Promise<ApiError> {
   const body = await res.json().catch(() => null);
   const detail = body?.detail;
-  return new ApiError(res.status, typeof detail === "string" ? detail : JSON.stringify(detail ?? res.statusText));
+  return new ApiError(res.status, typeof detail === "string" ? detail : detail ? JSON.stringify(detail) : res.statusText);
 }
 
 async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
