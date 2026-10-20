@@ -33,6 +33,7 @@ def test_settings_are_read_from_the_server_log():
     assert applied(explicit) == "FA enabled, KV K q8_0·V q8_0 612 MiB"
     assert applied(auto) == "FA auto→enabled, KV K f16·V f16 1152 MiB"
     assert applied("") == "FA ?"
+    assert applied(explicit.replace("612.00", "1224.00").replace("306.00", "612.00") + explicit) == "FA enabled, KV K q8_0·V q8_0 1224 / 612 MiB"
 
 
 def test_find_accepts_a_name_without_tag():

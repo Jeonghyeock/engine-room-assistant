@@ -4,6 +4,7 @@
     uv run python -m evals.serving run --label 기본        # Ollama를 11435에 따로 띄워(설정 기본값) 잰다
     uv run python -m evals.serving run --label q8 --fa 1 --kv q8_0
     uv run python -m evals.serving embed                  # 질의 임베딩을 CPU·GPU에 둘 때
+    uv run python -m evals.serving scenarios --fa 1 --kv q8_0 -- --label 이름 --num-ctx 16384   # 그 설정의 서버로 시나리오 평가
 
 재는 방법 — 에이전트가 실제로 보내는 요청 모양으로:
 - 에이전트는 한 차례에서 모델을 여러 번 부르고, 뒤 요청은 앞 요청에 도구 결과를 이어 붙인 것이다. 그래서 녹화한 호출을
@@ -29,6 +30,7 @@ import shutil
 import socket
 import statistics
 import subprocess
+import sys
 import tempfile
 import time
 import uuid
@@ -229,9 +231,9 @@ def applied(log: str) -> str:
     else:
         fa = f"FA {asked[-1]}" if asked else (f"FA {resolved[-1]}" if resolved else "FA ?")
     parts = [fa]
-    if kv:
-        k, ks, v, vs = kv[-1]
-        parts.append(f"KV K {k}·V {v} {float(ks) + float(vs):.0f} MiB")
+    if kv:  # 다른 num_ctx로 다시 올리면 크기가 여럿 — 나온 순서대로 모두
+        sizes = list(dict.fromkeys(f"{float(ks) + float(vs):.0f}" for _, ks, _, vs in kv))
+        parts.append(f"KV K {kv[-1][0]}·V {kv[-1][2]} {' / '.join(sizes)} MiB")
     return ", ".join(parts)
 
 
@@ -374,9 +376,18 @@ def main() -> None:
     run.add_argument("--fa", choices=["0", "1"], help="OLLAMA_FLASH_ATTENTION")
     run.add_argument("--kv", choices=["f16", "q8_0", "q4_0"], help="OLLAMA_KV_CACHE_TYPE")
     run.add_argument("--note", default="", help="측정 환경 메모(켜 둔 앱 등)")
+    sc = sub.add_parser("scenarios", help="그 설정으로 Ollama를 따로 띄워 시나리오 평가(evals.scenarios)를 돌린다")
+    sc.add_argument("--fa", choices=["0", "1"])
+    sc.add_argument("--kv", choices=["f16", "q8_0", "q4_0"])
+    sc.add_argument("rest", nargs=argparse.REMAINDER, help="-- 뒤는 evals.scenarios의 인자")
     a = ap.parse_args()
     if a.cmd == "record":
         asyncio.run(_record())
+    elif a.cmd == "scenarios":
+        rest = a.rest[1:] if a.rest[:1] == ["--"] else a.rest
+        with server(a.fa, a.kv) as (url, read_log):  # 문서 검색의 질의 임베딩도 이 서버로 간다(PASS_ENV)
+            subprocess.run([sys.executable, "-m", "evals.scenarios", *rest], env={**os.environ, "OLLAMA_URL": url}, check=True)
+            print("서버에 실제 적용:", applied(read_log()))
     elif a.cmd == "run":
         text = table_row(a.label, a.model, a.num_ctx, measure(a.fa, a.kv, a.model, a.num_ctx, a.repeat), a.note)
         append(text)

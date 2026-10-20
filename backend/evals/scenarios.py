@@ -114,10 +114,10 @@ def parse_judgement(text: str) -> bool | None:
     return None
 
 
-async def judge(ask: str, answer: str, criterion: str) -> tuple[bool | None, str]:
+async def judge(ask: str, answer: str, criterion: str, num_ctx: int = 8192) -> tuple[bool | None, str]:
     prompt = JUDGE_PROMPT.format(criterion=criterion, ask=ask, answer=answer)
     text = []
-    async with aclosing(stream_chat([{"role": "user", "content": prompt}], [], ChatOptions(num_predict=8))) as events:
+    async with aclosing(stream_chat([{"role": "user", "content": prompt}], [], ChatOptions(num_predict=8, num_ctx=num_ctx))) as events:
         async for ev in events:
             if isinstance(ev, TextDelta):
                 text.append(ev.text)
@@ -170,14 +170,15 @@ async def run_scenario(
     return turns
 
 
-async def judge_turn(turn: Turn, expect: dict) -> None:
+async def judge_turn(turn: Turn, expect: dict, num_ctx: int = 8192) -> None:
+    """num_ctx는 평가와 같게 — 다르면 Ollama가 대화와 판정 사이마다 모델을 다시 올린다(16k 평가에서 45번)."""
     if not turn.answer.strip():
         return
     for criterion in expect.get("judge_pass", []):
-        verdict, raw = await judge(turn.ask, turn.answer, criterion)
+        verdict, raw = await judge(turn.ask, turn.answer, criterion, num_ctx)
         turn.judgements.append({"criterion": criterion, "want": True, "raw": raw, "verdict": verdict})
     for criterion in expect.get("judge_fail", []):
-        verdict, raw = await judge(turn.ask, turn.answer, criterion)
+        verdict, raw = await judge(turn.ask, turn.answer, criterion, num_ctx)
         turn.judgements.append({"criterion": criterion, "want": False, "raw": raw, "verdict": verdict})
 
 
@@ -216,7 +217,7 @@ async def evaluate(
             turns = await run_scenario(spec, ChatOptions(**{**opts.__dict__, "seed": seed}), prompt, guard, follow_up_search)
             results = []
             for turn, expect in zip(turns, spec["turns"]):
-                await judge_turn(turn, expect)
+                await judge_turn(turn, expect, opts.num_ctx)
                 res = check(turn, expect)
                 res["전체"] = all(res.values())  # 정해진 검사만
                 res["판정"] = bool(turn.answer.strip()) and judged_ok(turn)
@@ -252,6 +253,7 @@ def main() -> None:
     ap.add_argument("--label", default=dt.datetime.now().strftime("%Y%m%d-%H%M"), help="결과 이름(기본: 지금 시각)")
     ap.add_argument("--overwrite", action="store_true", help="같은 이름의 결과를 덮어쓴다")
     ap.add_argument("--think", action="store_true")
+    ap.add_argument("--model", help="대화 모델(기본: CHAT_MODEL) — 판정은 기본 모델 그대로라 모델끼리 판정 칸을 비교할 수 있다")
     ap.add_argument("--temperature", type=float, default=EVAL_TEMPERATURE)
     ap.add_argument("--num-ctx", type=int, default=8192)
     ap.add_argument("--only", nargs="*", help="S1 S2 … 중 일부만")
@@ -265,7 +267,7 @@ def main() -> None:
     specs = yaml.safe_load((HERE / "scenarios.yaml").read_text(encoding="utf-8"))
     if a.only:
         specs = [s for s in specs if s["id"] in a.only]
-    md = asyncio.run(evaluate(specs, ChatOptions(think=a.think, temperature=a.temperature, num_ctx=a.num_ctx), a.label, a.prompt, not a.no_guard, not a.no_follow_up_search))
+    md = asyncio.run(evaluate(specs, ChatOptions(think=a.think, temperature=a.temperature, num_ctx=a.num_ctx, **({"model": a.model} if a.model else {})), a.label, a.prompt, not a.no_guard, not a.no_follow_up_search))
     out.write_text(md, encoding="utf-8")
     print(md)
 
