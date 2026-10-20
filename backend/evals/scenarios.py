@@ -233,7 +233,7 @@ async def evaluate(
     lines = [
         f"# 시나리오 평가 — {label}",
         "",
-        f"{dt.date.today()} · {opts.model} · 프롬프트 {prompt} · 근거 검사 {'켬' if guard else '끔'} · 이어지는 질문 자동 검색 {'켬' if follow_up_search else '끔'} · temperature {opts.temperature} · think={'켬' if opts.think else '끔'} · num_ctx {opts.num_ctx} · 씨앗 {SEEDS}",
+        f"{dt.date.today()} · {opts.model} · 프롬프트 {prompt} · 근거 검사 {'켬' if guard else '끔'} · 이어지는 질문 자동 검색 {'켬' if follow_up_search else '끔'} · temperature {opts.temperature} · think={'켬' if opts.think else '끔'} · num_ctx {opts.num_ctx} · 판정 {ChatOptions().model} · 씨앗 {SEEDS}",
         "",
         "칸은 통과 수/실행 수. **전체 = 정해진 검사만**(판정은 표시 — 답 전문의 판정 원문과 함께 사람이 읽고 판단).",
         "",
