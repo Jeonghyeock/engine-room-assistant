@@ -31,6 +31,11 @@ log = logging.getLogger(__name__)
 OPEN_TIMEOUT = 30.0
 
 
+def _check(scenario: str) -> None:
+    if scenario not in list_ids():
+        raise ValueError(f"모르는 시나리오 {scenario!r} — {', '.join(list_ids())} 중 하나")
+
+
 def _settle(fut: asyncio.Future, error: BaseException | None = None) -> None:
     if fut.done():  # 기다리던 쪽이 그만뒀다(취소)
         return
@@ -51,30 +56,25 @@ class ToolHost:
     async def start(self, scenario: str) -> None:
         if self._task is not None and not self._task.done():
             raise RuntimeError("도구 상자 주인이 이미 돌고 있다")
+        _check(scenario)  # 주인을 띄우기 전에 — 잘못된 이름으로 주인만 떠 있지 않게
         self._task = asyncio.create_task(self._run(), name="tool-host")
         await self.switch(scenario)
 
     async def switch(self, scenario: str) -> None:
         """시나리오를 바꾸고 새 상자가 열릴 때까지 기다린다. 열지 못하면 그 예외를 올리고, 상자 없이 남는다."""
-        if scenario not in list_ids():  # 주인에게 넘기기 전에 — 잘못된 이름으로 지금 상자를 닫지 않게
-            raise ValueError(f"모르는 시나리오 {scenario!r} — {', '.join(list_ids())} 중 하나")
+        _check(scenario)  # 주인에게 넘기기 전에 — 잘못된 이름으로 지금 상자를 닫지 않게
         await self._ask(scenario)
 
     async def stop(self) -> None:
         task = self._task
         if task is None:
             return
-        if task.done():  # 이미 끝난 주인(예상 못한 예외·취소) — 기다리던 요청은 그때 이미 깨웠다
-            self._task = None
-            if not task.cancelled() and task.exception() is not None:
-                log.error("도구 상자 주인이 예외로 끝나 있었다: %r", task.exception())
-            return
-        self._requests.put_nowait((None, asyncio.get_running_loop().create_future()))
-        try:
-            await asyncio.shield(task)  # 부른 쪽이 취소돼도 주인은 상자를 끝까지 닫는다
-        finally:
-            if task.done():
-                self._task = None
+        if not task.done():
+            self._requests.put_nowait((None, asyncio.get_running_loop().create_future()))
+            await asyncio.wait({task})  # 부른 쪽이 취소돼도 주인은 취소되지 않고 상자를 끝까지 닫는다
+        self._task = None
+        if not task.cancelled() and task.exception() is not None:  # 예상 못한 예외로 끝난 주인 — 기다리던 요청은 그때 깨웠다
+            log.error("도구 상자 주인이 예외로 끝났다: %r", task.exception())
 
     async def _ask(self, scenario: str | None) -> None:
         if self._task is None or self._task.done():
@@ -97,26 +97,26 @@ class ToolHost:
                 return request
 
     async def _run(self) -> None:
-        try:
-            request = await self._next()
-            while True:
-                scenario, fut = request
-                if scenario is None:
-                    _settle(fut)
-                    return
-                request = await self._serve(scenario, fut) or await self._next()
-        finally:
-            # 멈춤·예상 못한 예외·취소 — 줄 서 있던 요청이 영원히 기다리지 않게 모두 끝낸다
-            while not self._requests.empty():
-                _settle(self._requests.get_nowait()[1], RuntimeError("도구 상자 주인이 멈췄다"))
+        # 주인이 끝나면(멈춤·예상 못한 예외·취소) 줄 선 요청은 _ask가 주인 태스크를 함께 기다리다 알아챈다
+        request = await self._next()
+        while True:
+            scenario, fut = request
+            if scenario is None:
+                _settle(fut)
+                return
+            request = await self._serve(scenario, fut) or await self._next()
 
     async def _serve(self, scenario: str, fut: asyncio.Future) -> tuple[str | None, asyncio.Future] | None:
         """상자 하나를 열어 다음 요청이 올 때까지 둔 뒤 닫는다(이 태스크에서). 다음 요청을 돌려준다. 열지 못하면 None."""
-        cm = self._factory(scenario)
         try:
-            async with asyncio.timeout(OPEN_TIMEOUT):
-                box = await cm.__aenter__()
+            cm = self._factory(scenario)
+            try:
+                async with asyncio.timeout(OPEN_TIMEOUT):
+                    box = await cm.__aenter__()
+            except TimeoutError as e:
+                raise TimeoutError(f"도구 상자({scenario})를 {OPEN_TIMEOUT}초 안에 열지 못했다") from e
         except Exception as e:
+            log.warning("도구 상자(%s)를 열지 못했다: %r", scenario, e)  # 기다리던 쪽이 그만뒀어도 남는다
             _settle(fut, e)
             return None
         try:
