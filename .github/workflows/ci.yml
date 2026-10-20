@@ -19,3 +19,20 @@ jobs:
       # Ollama·Docling 없이 도는 테스트만. 기본 그룹(dev)만 설치한다.
       - run: uv sync --locked --python 3.12
       - run: uv run pytest -q
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      # 타입 검사(tsc)와 번들, SSE 파서 테스트
+      - run: npm run build
+      - run: npm test
