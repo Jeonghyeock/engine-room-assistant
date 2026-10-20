@@ -139,8 +139,11 @@
   - EventSource는 GET만 되므로, 화면은 `fetch`로 스트림을 읽는다.
   - 첫 이벤트는 `conversation` `{ id, scenario }`다. 새 대화의 번호를 화면이 알아야 이어지는 질문에 실어 보낸다(초안에는 빠져 있었다).
   - 한 번에 한 차례만 돈다(GPU 하나에 모델 하나). 돌고 있으면 409. 모르는 대화 번호는 404. 시나리오 바꾸기에 실패해 도구 상자가 없으면 503.
+  - 요청이 동시에 들어오면 확인을 모두 통과한 뒤라 200으로 열리고, 첫 이벤트가 `error`(`busy`·`no_tools`·`unknown_conversation`)다. 화면은 409와 이것을 둘 다 다룬다.
+  - 스트림의 끝은 늘 `done` 또는 `error`다.
   - 화면이 스트림을 끊으면(중단 버튼) 그 차례는 되돌린다(6.4-9). 차례는 응답과 다른 태스크에서 돌리고, 끊기면 그 태스크를 한 번 취소한 뒤 정리가 끝나야 다음 질문을 받는다 — 응답 태스크에서 돌리면 Starlette의 취소가 정리하는 `await`까지 끊었다.
-  - 대화는 서버 메모리에만 둔다.
+  - 모델이 이미 답을 끝낸 뒤에 끊으면 그 차례는 받아들인 답으로 남는다.
+  - 대화는 서버 메모리에만 둔다. 서버는 `--timeout-graceful-shutdown 5`로 띄운다 — 없으면 Ctrl+C가 돌고 있는 차례가 끝날 때까지 기다린다.
 
 | 이벤트 | 데이터 | 언제 |
 |---|---|---|
@@ -150,7 +153,7 @@
 | `token` | `{ text, round }` | 답변 글자 조각. `round`는 차례 안의 모델 호출 번호 — 도구 전 짧은 말·되돌린 초안과 마지막 답을 가른다 |
 | `citation` | `{ n, chunk_id, source, locator, title, snippet, verified }` | 답에 인용이 나올 때 |
 | `done` | `{ tokens, tok_per_s, elapsed_ms, rounds, rechecks, model_calls, max_prompt_tokens, num_ctx, truncated, context_near_limit }` | 끝. `rounds`는 모델이 부른 도구 왕복만 센다(자동 검색 제외). `truncated`는 답이 `num_predict`에서 잘렸다는 뜻이다. 문맥은 따로 본다 — `context_near_limit`는 `max_prompt_tokens`가 `num_ctx`의 90% 이상이라 오래된 대화가 잘렸을 수 있다는 뜻 |
-| `error` | `{ code, message }` | 실패. 에이전트의 `llm`·`too_many_steps`·`tool_errors`와, `busy`(다른 차례가 먼저 시작), `no_tools`(도구 상자가 없음 — 바꾸기 실패 뒤), `internal`(프로그램 오류) |
+| `error` | `{ code, message }` | 실패. 에이전트의 `llm`·`too_many_steps`·`tool_errors`와, `busy`(다른 차례가 먼저 시작), `no_tools`(도구 상자가 없음 — 바꾸기 실패 뒤), `unknown_conversation`(확인한 뒤 시나리오가 바뀜), `internal`(프로그램 오류) |
 
 - `GET /api/alarms` → `{ scenario, alarms }` — 화면 왼쪽 알람 목록(백엔드가 MCP ①을 부른다)
 - `GET /api/scenarios` → `{ current, scenarios: [{ id, title, summary }] }`

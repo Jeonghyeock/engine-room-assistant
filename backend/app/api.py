@@ -1,18 +1,25 @@
 """HTTP API — 화면이 쓰는 대화 스트림(SSE)과 알람·시나리오(설계 문서 6.5).
 
-    uv run uvicorn app.api:app --port 8000
+    uv run uvicorn app.api:app --port 8000 --timeout-graceful-shutdown 5
+
+(종료 시간 제한이 없으면 Ctrl+C가 돌고 있는 차례가 끝날 때까지 기다린다 — 느린 GPU에서는 몇 분)
 
 - POST /api/chat {conversation_id?, message} → text/event-stream
   첫 이벤트는 conversation {id, scenario}(새 대화의 번호를 화면이 알 수 있게), 이어서 step_start·step_end·token·citation,
   끝은 done 또는 error.
 - GET /api/alarms · GET /api/scenarios · POST /api/scenarios/{id}/start(대화를 모두 지운다)
 
-한 번에 한 차례만 돈다(GPU 하나에 모델 하나) — 돌고 있으면 409. 화면이 스트림을 끊으면(중단 버튼) 그 차례는
-되돌린다(run_turn의 finally). 대화는 이 프로세스 메모리에만 있다.
+한 번에 한 차례만 돈다(GPU 하나에 모델 하나) — 돌고 있으면 409(동시에 들어오면 200 + 첫 이벤트 error busy).
+화면이 스트림을 끊으면(중단 버튼) 그 차례는 되돌린다(run_turn의 finally). 다만 모델이 이미 답을 끝낸 뒤에 끊으면
+그 차례는 받아들인 답으로 남는다. 대화는 이 프로세스 메모리에만 있다.
+
+끊김 감지는 Starlette가 ASGI 2.3 서버(uvicorn 0.54)에서 http.disconnect를 듣고 응답 태스크를 취소하는 데 기댄다.
+ASGI 2.4 서버로 바꾸면 Starlette는 끊김을 듣지 않으므로 중단을 다시 확인해야 한다(#20 리뷰).
 """
 
 import asyncio
 import dataclasses
+import functools
 import json
 import logging
 import uuid
@@ -35,11 +42,12 @@ DEFAULT_SCENARIO = "S1"
 EVENT_NAMES = {StepStart: "step_start", StepEnd: "step_end", Token: "token", Citation: "citation", Done: "done", Error: "error"}
 BUSY = "다른 질문에 답하는 중이다 — 끝나거나 중단한 뒤에 다시 보낸다"
 NO_TOOLS = "도구 서버가 열려 있지 않다 — 시나리오를 다시 고른다"
+UNKNOWN = "모르는 대화다 — 시나리오를 바꾸면 대화가 지워진다"
 
 
 class ChatRequest(BaseModel):
     conversation_id: str | None = None
-    message: str = Field(min_length=1)
+    message: str = Field(min_length=1, pattern=r"\S")  # 공백뿐인 질문은 422
 
 
 def sse(event: str, data: dict) -> str:
@@ -66,6 +74,11 @@ async def pump(stream, queue: asyncio.Queue) -> None:
         queue.put_nowait(None)
 
 
+@functools.cache
+def _scenario_list() -> tuple[dict, ...]:
+    return tuple({"id": s.id, "title": s.title, "summary": s.summary} for s in map(load, list_ids()))
+
+
 def create_app(llm=stream_chat, box_factory=ToolBox, scenario: str = DEFAULT_SCENARIO, opts: ChatOptions | None = None) -> FastAPI:
     """llm·box_factory는 테스트와 E2E가 가짜로 바꿔 끼운다."""
     host = ToolHost(box_factory)
@@ -87,7 +100,7 @@ def create_app(llm=stream_chat, box_factory=ToolBox, scenario: str = DEFAULT_SCE
     async def chat(req: ChatRequest) -> StreamingResponse:
         cid = req.conversation_id or uuid.uuid4().hex
         if req.conversation_id is not None and cid not in conversations:
-            raise HTTPException(404, "모르는 대화다 — 시나리오를 바꾸면 대화가 지워진다")
+            raise HTTPException(404, UNKNOWN)
         if turn.locked():
             raise HTTPException(409, BUSY)
         if host.scenario is None:
@@ -101,13 +114,21 @@ def create_app(llm=stream_chat, box_factory=ToolBox, scenario: str = DEFAULT_SCE
                 if host.scenario is None:
                     yield sse("error", {"code": "no_tools", "message": NO_TOOLS})
                     return
+                if req.conversation_id is not None and cid not in conversations:  # 확인한 뒤 시나리오를 바꾼 경우
+                    yield sse("error", {"code": "unknown_conversation", "message": UNKNOWN})
+                    return
                 conv = conversations.setdefault(cid, Conversation())
                 yield sse("conversation", {"id": cid, "scenario": host.scenario})
                 queue: asyncio.Queue = asyncio.Queue()
                 producer = asyncio.create_task(pump(run_turn(conv, req.message, host, opts, llm=llm), queue))
+                last = None
                 try:
                     while (ev := await queue.get()) is not None:
+                        last = ev
                         yield sse(EVENT_NAMES[type(ev)], event_data(ev))
+                    if not isinstance(last, (Done, Error)):  # 끝은 늘 done 또는 error(설계 6.5) — 차례가 Exception
+                        # 아닌 예외(예: 안에서 생긴 취소)로 끝나면 pump가 오류 이벤트를 못 넣는다
+                        yield sse("error", {"code": "internal", "message": "차례가 done 없이 끝났다"})
                 finally:
                     # 끊기면(중단 버튼) Starlette가 이 태스크를 취소하고, 정리하는 await까지 거듭 취소한다. 차례를 여기서
                     # 돌리면 차례 안의 정리(모델 스트림 닫기 등)가 중간에 끊겼다(test_api). 진짜 Ollama로는 그래도 끊은
@@ -116,21 +137,24 @@ def create_app(llm=stream_chat, box_factory=ToolBox, scenario: str = DEFAULT_SCE
                     producer.cancel()
                     with anyio.CancelScope(shield=True):
                         await asyncio.wait([producer])
+                    if not producer.cancelled() and producer.exception() is not None:
+                        log.error("차례가 예외로 끝났다: %r", producer.exception())
 
         return StreamingResponse(events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
 
     @app.get("/api/alarms")
     async def alarms() -> dict:
+        scenario = host.scenario  # 호출 전에 — 그사이 시나리오가 바뀌면 옛 알람에 새 이름을 붙이게 된다(#20 리뷰)
         res = await host.call("list_active_alarms", {})
-        if not res.ok:
-            raise HTTPException(503, res.error)
-        return {"scenario": host.scenario, **res.data}
+        if not res.ok or host.scenario != scenario:
+            raise HTTPException(503, res.error or "시나리오를 바꾸는 중이다")
+        return {"scenario": scenario, **res.data}
 
     @app.get("/api/scenarios")
     async def scenarios() -> dict:
         return {
             "current": host.scenario,
-            "scenarios": [{"id": s.id, "title": s.title, "summary": s.summary} for s in map(load, list_ids())],
+            "scenarios": list(_scenario_list()),  # 시나리오를 펼치는 데 약 20ms — 한 번만
         }
 
     @app.post("/api/scenarios/{sid}/start")

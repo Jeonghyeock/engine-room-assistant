@@ -61,7 +61,7 @@ class ScriptLLM:
 def parse_sse(text: str) -> list[tuple[str, dict]]:
     out = []
     for block in text.strip().split("\n\n"):
-        lines = dict(line.split(": ", 1) for line in block.splitlines())
+        lines = dict(line.split(": ", 1) for line in block.split("\n"))  # splitlines는 U+2028 등에서도 자른다(#20 리뷰)
         out.append((lines["event"], json.loads(lines["data"])))
     return out
 
@@ -104,13 +104,14 @@ def test_unknown_conversation_busy_turn_and_empty_message_are_refused():
     async def go(c):
         unknown = await c.post("/api/chat", json={"conversation_id": "nope", "message": "q"})
         empty = await c.post("/api/chat", json={"message": ""})
+        blank = await c.post("/api/chat", json={"message": "  \n "})
         async with app.state.turn:  # 다른 차례가 도는 중
             busy = await c.post("/api/chat", json={"message": "q"})
             busy_switch = await c.post("/api/scenarios/S2/start")
-        return unknown, empty, busy, busy_switch
+        return unknown, empty, blank, busy, busy_switch
 
-    unknown, empty, busy, busy_switch = asyncio.run(with_client(app, go))
-    assert unknown.status_code == 404 and empty.status_code == 422
+    unknown, empty, blank, busy, busy_switch = asyncio.run(with_client(app, go))
+    assert unknown.status_code == 404 and empty.status_code == 422 and blank.status_code == 422
     assert busy.status_code == 409 and busy_switch.status_code == 409
 
 
@@ -175,12 +176,24 @@ def test_closing_the_stream_rolls_the_turn_back_and_frees_the_server():
     """중단 버튼: 화면이 스트림을 끊으면 그 차례는 되돌아가고, 다음 질문을 받을 수 있다(진짜 uvicorn으로)."""
     llm = SlowLLM()
     app = create_app(llm=llm, box_factory=FakeToolBox, scenario="S2")
+    # 잠금이 풀리는 순간의 상태를 적는다 — 정리(되돌리기·모델 스트림 닫기)가 끝난 뒤에 풀려야, 바로 들어온 다음 차례를
+    # 늦게 도는 되돌리기가 지우지 않는다(#20 리뷰: 정리를 기다리지 않게 바꿔도 다른 단언은 모두 통과했다)
+    at_release = []
+    release = app.state.turn.release
+
+    def recording_release():
+        conv = next(iter(app.state.conversations.values()))
+        at_release.append((llm.cleaned, [m["role"] for m in conv.messages]))
+        release()
+
+    app.state.turn.release = recording_release
 
     async def go():
         server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=0, log_level="warning"))
         serving = asyncio.create_task(server.serve())
-        while not server.started:
-            await asyncio.sleep(0.05)
+        async with asyncio.timeout(10):  # 서버가 뜨지 못하면 멈추지 않고 실패
+            while not server.started:
+                await asyncio.sleep(0.05)
         port = server.servers[0].sockets[0].getsockname()[1]
         try:
             async with httpx.AsyncClient(base_url=f"http://127.0.0.1:{port}", timeout=10) as c:
@@ -205,6 +218,30 @@ def test_closing_the_stream_rolls_the_turn_back_and_frees_the_server():
             await serving
 
     roles, answered, again = asyncio.run(go())
+    assert at_release[0] == (True, ["system"])  # 처음 풀릴 때 이미 정리가 끝나 있었다
     assert roles == ["system"] and not answered  # 끊긴 차례는 기록에 남지 않는다 → 다음 질문은 첫 질문으로 다룬다
     assert llm.cleaned  # 모델 스트림의 정리가 끝까지 돌았다
     assert again == 200  # 잠금이 풀려 다음 질문을 받는다
+
+
+class Interrupted(BaseException):
+    """Exception이 아닌 예외 — 차례 안에서 생긴 취소 같은 것."""
+
+
+class InterruptedLLM:
+    async def __call__(self, messages, tools, opts):
+        yield TextDelta("글 ")
+        raise Interrupted()
+
+
+def test_stream_always_ends_with_done_or_error():
+    """차례가 Exception이 아닌 예외로 끝나도 스트림 끝은 error다(설계 6.5) — #20 리뷰: 아무 이벤트 없이 끝났다."""
+    app = create_app(llm=InterruptedLLM(), box_factory=FakeToolBox, scenario="S1")
+
+    async def go(c):
+        events = parse_sse((await c.post("/api/chat", json={"message": "q"})).text)
+        return events, app.state.turn.locked()
+
+    events, locked = asyncio.run(with_client(app, go))
+    assert [e for e, _ in events] == ["conversation", "token", "error"] and events[-1][1]["code"] == "internal"
+    assert not locked
