@@ -33,6 +33,7 @@ FOLLOW_UP = "결론: 우회하지 않는다 [1]. 원인을 먼저 확인한다."
 class E2EBox:
     def __init__(self, scenario: str):
         self.scenario = scenario
+        self.searches = 0
 
     async def __aenter__(self):
         return self
@@ -48,11 +49,18 @@ class E2EBox:
             alarm = {"tag": "ME_EXH_TEMP_CYL3", "name": "3번 실린더 배기가스 온도", "level": "경보", "value": 462.6,
                      "unit": "°C", "limit": "≥ 450", "since": "2026-10-16T14:27+09:00", "minutes_ago": 3}
             return ToolResult(True, {"alarms": [alarm]})
-        return ToolResult(True, {"results": [CHUNK]})
+        # 부를 때마다 다른 조각(제목에 검색 순번) — 중단한 차례의 조각 번호가 되돌려지지 않으면 다음 차례의 [1]이
+        # 옛 조각(검색 1)을 가리킨다(E2E가 근거 패널 제목으로 잡는다)
+        self.searches += 1
+        n = self.searches
+        return ToolResult(True, {"results": [{**CHUNK, "id": f"{CHUNK['id']}#{n}", "title": f"{CHUNK['title']} (검색 {n})"}]})
 
 
 class ScriptLLM:
-    """새 질문이면 도구부터 부르고, 도구 결과를 받았으면 [1]을 인용해 글을 천천히 흘린다."""
+    """새 질문이면 도구부터 부르고, 도구 결과를 받았으면 [1]을 인용해 글을 천천히 흘린다.
+    기록에 질문이 둘 이상이면 이어지는 질문의 답(FOLLOW_UP)을 쓴다 — 중단한 질문이 기록에 남았는지 화면에서 보인다.
+    E2E는 ANSWER가 다 흐르기 전에 단계·[1]을 확인한다: [1]이 15번째 조각, 47조각 × delay 0.05초면 약 1.6초 여유.
+    ANSWER를 줄이거나 delay를 낮추면 그 단언이 흔들린다."""
 
     def __init__(self, delay: float):
         self.delay = delay

@@ -9,13 +9,15 @@ export default defineConfig({
   testDir: "e2e",
   testMatch: /.*\.pw\.ts/, // Vitest(*.test.ts)와 섞이지 않게
   timeout: 60_000,
-  use: { baseURL: `http://127.0.0.1:${WEB}`, trace: "retain-on-failure" },
+  workers: 1, // 백엔드 하나가 한 번에 한 차례만 받는다(409)
+  use: { baseURL: `http://127.0.0.1:${WEB}`, trace: "retain-on-failure", actionTimeout: 10_000 },
   webServer: [
     {
       command: `uv run python -m tests.e2e_server --port ${API}`,
       cwd: "../backend",
       url: `http://127.0.0.1:${API}/api/scenarios`,
       reuseExistingServer: false,
+      timeout: 120_000, // 처음 쓰는 컴퓨터면 uv가 의존성을 받는다(CI는 먼저 uv sync)
       env: { PYTHONUTF8: "1" },
     },
     {
