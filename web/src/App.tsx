@@ -15,19 +15,36 @@ function stepLabel(s: Step): string {
 
 /** 답의 [n]을 누르면 근거 패널에서 그 조각을 연다. 되돌린 차례의 [n]은 버튼으로 만들지 않는다 —
  *  서버가 되돌린 번호는 다음 질문에서 다른 조각에 다시 붙을 수 있다. */
-function AnswerText({ text, citations, live, onCite }: { text: string; citations: Citation[]; live: boolean; onCite: (n: number) => void }) {
+function AnswerText({
+  text,
+  citations,
+  live,
+  onCite,
+  className = "answer",
+}: {
+  text: string;
+  citations: Citation[];
+  live: boolean;
+  onCite: (n: number) => void;
+  className?: string;
+}) {
   return (
-    <p className="answer">
+    <p className={className}>
       {splitInline(text).map((p, i) => {
-        if (p.kind === "bold") return <strong key={i}>{p.value}</strong>;
-        if (p.kind === "text" || !live) return <span key={i}>{p.value}</span>;
-        const c = citations.find((c) => c.n === p.n);
-        const cls = c === undefined ? "cite" : c.verified ? "cite verified" : "cite unverified";
-        return (
-          <button key={i} className={cls} onClick={() => onCite(p.n)} title={c ? c.locator : "근거 정보를 기다리는 중"}>
-            {p.value}
-          </button>
-        );
+        let node;
+        if (p.kind === "text" || !live) {
+          node = p.value;
+        } else {
+          const c = citations.find((c) => c.n === p.n);
+          const cls = c === undefined ? "cite" : c.verified ? "cite verified" : "cite unverified";
+          const n = p.n;
+          node = (
+            <button className={cls} onClick={() => onCite(n)} title={c ? c.locator : "근거 정보를 기다리는 중"}>
+              {p.value}
+            </button>
+          );
+        }
+        return p.bold ? <strong key={i}>{node}</strong> : <span key={i}>{node}</span>;
       })}
     </p>
   );
@@ -54,7 +71,8 @@ function TurnView({ turn, onCite }: { turn: Turn; onCite: (n: number) => void })
         <details className="earlier">
           <summary>도구 전 말·되돌린 초안 {earlier.length}개</summary>
           {earlier.map((r, i) => (
-            <p key={i}>{r}</p>
+            // 앞의 글의 [n]은 누를 수 없다 — 되돌린 초안의 번호는 검색된 적 없는 것일 수 있다
+            <AnswerText key={i} text={r} citations={[]} live={false} onCite={onCite} className="draft" />
           ))}
         </details>
       )}

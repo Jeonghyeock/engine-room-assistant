@@ -25,6 +25,7 @@ test("도구 단계와 인용이 답 도중에 나타나고, 중단한 질문은
   // 서버가 중단한 차례를 되돌렸다: 가짜 모델이 기록에서 질문을 하나만 봐 첫 질문의 답을 썼고(메시지를 되돌리지 않으면
   // 이어지는 질문의 답을 쓴다), [1]이 이번 검색(2번째) 조각을 가리킨다(조각 번호를 되돌리지 않으면 중단한 차례의 검색 1)
   await expect(second.locator(".answer")).toContainText("가능한 원인");
+  await expect(second.locator(".answer strong")).toHaveText("연료 분사 밸브부터 점검한다"); // **…**는 별표 없이 굵게
   const cite = second.locator(".answer .cite.verified").first();
   await expect(cite).toBeVisible();
   await cite.click();
