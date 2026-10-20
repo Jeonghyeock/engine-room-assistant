@@ -1,8 +1,9 @@
 # 기관실 알람 대응 어시스턴트 — 설계 문서
 
-> 상태: 확정(2026-10-16, 10장 권장안 채택). 3단계까지 끝냄 — 결과는 README.
+> 상태: 확정(2026-10-16, 10장 권장안 채택). 4단계까지 끝냄 — 결과는 README.
 > - 2단계에서 바뀐 것은 6.2·6.3·7·9장에 반영했다.
 > - 3단계에서 바뀐 것은 6.4·6.5·8·9장에 반영했다.
+> - 4단계에서 바뀐 것은 6.4·6.5·6.6·7·8·9장에 반영했다.
 
 ## 1. 목표
 
@@ -189,14 +190,16 @@ engine-room-assistant/
     manual/         가상 매뉴얼 md 원본
     scenarios/      baseline.json(평상시 값) + S1~S3(바뀌는 부분)
   backend/          uv 프로젝트 (Python 3.12)
-    app/            FastAPI: api, agent, llm(Ollama), mcp_client
+    app/            api(FastAPI, SSE), host(도구 상자 주인), agent(루프), llm(Ollama), tools(MCP 도구 상자), prompts, cli
     ams/            scenario(펼치기), system(알람 판정·센서·추세, 읽기 전용)
     ingest/         build_manual, cfr, manual(Docling), build_index
     rag/            embed(Ollama bge-m3), store(LanceDB 검색) — docs 서버와 평가가 함께 쓴다
     mcp_servers/    ams_server, docs_server
-    evals/          검색 평가, 시나리오 평가
-    tests/
+    evals/          검색 평가, 시나리오 평가, 판정 회귀 점검
+    tests/          pytest. e2e_server.py는 E2E용 서버(가짜 모델·도구)
   web/              React + Vite + TypeScript
+    src/            App(화면), turn(답 자리), inline(굵은 글씨·인용), sse(파서), api(백엔드 계약)
+    e2e/            Playwright E2E
 ```
 
 ## 8. 단계와 완료 기준
@@ -222,6 +225,13 @@ engine-room-assistant/
     - 그 뒤 함정도 정해진 문형으로 본다(#17).
   - 전제 오류 0(#16의 멈춤 기준). 우회 질문에서 10번 중 2번 나왔다. 첫 차례 알람 분석에서도 같은 문형이 10번 중 4번 걸린다(검사는 우회 질문에만 있다).
 - 이것들은 README의 "못 한 것"에 남기고 3단계를 멈췄다.
+
+4단계 결과(README)는 다음과 같다.
+- 채운 것:
+  - 도구 단계와 인용이 답 도중에 나타난다. E2E에서 `done` 전에 단계와 글 속 `[1]`을 확인한다. 위치·확인 여부는 `done` 직전에 온다(6.5).
+  - 중단이 동작한다. 화면이 끊으면 서버가 그 차례를 되돌리고, E2E가 다시 물은 답으로 확인한다.
+  - Playwright E2E 1개가 CI에서 돈다(가짜 모델).
+- 진짜 모델로는 화면을 Playwright로 조작한 수동 기록 1건이 있다(S2, 2026-10-20).
 
 ## 9. 위험
 
