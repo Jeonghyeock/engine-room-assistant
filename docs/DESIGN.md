@@ -151,7 +151,7 @@
 | `step_start` | `{ id, tool, args, auto }` | 도구 호출 시작. `tool: "check_citations"`는 도구가 아니라 근거 검사(6.4-7)를 단계로 보여 주는 것. `auto`는 모델이 아니라 에이전트가 부른 단계(6.4-8) |
 | `step_end` | `{ id, ok, summary }` | 도구 결과(요약) |
 | `token` | `{ text, round }` | 답변 글자 조각. `round`는 차례 안의 모델 호출 번호 — 도구 전 짧은 말·되돌린 초안과 마지막 답을 가른다 |
-| `citation` | `{ n, chunk_id, source, locator, title, snippet, verified }` | 답에 인용이 나올 때 |
+| `citation` | `{ n, chunk_id, source, locator, title, snippet, verified }` | 답을 받아들인 뒤 `done` 직전에 인용마다. 답이 흐르는 동안 화면은 글 속 `[n]`만 보여 주고, 이 이벤트가 오면 확인됨·미확인을 표시한다 |
 | `done` | `{ tokens, tok_per_s, elapsed_ms, rounds, rechecks, model_calls, max_prompt_tokens, num_ctx, truncated, context_near_limit }` | 끝. `rounds`는 모델이 부른 도구 왕복만 센다(자동 검색 제외). `truncated`는 답이 `num_predict`에서 잘렸다는 뜻이다. 문맥은 따로 본다 — `context_near_limit`는 `max_prompt_tokens`가 `num_ctx`의 90% 이상이라 오래된 대화가 잘렸을 수 있다는 뜻 |
 | `error` | `{ code, message }` | 실패. 에이전트의 `llm`·`too_many_steps`·`tool_errors`와, `busy`(다른 차례가 먼저 시작), `no_tools`(도구 상자가 없음 — 바꾸기 실패 뒤), `unknown_conversation`(확인한 뒤 시나리오가 바뀜), `internal`(프로그램 오류) |
 
