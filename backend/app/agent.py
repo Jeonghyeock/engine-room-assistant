@@ -35,6 +35,7 @@ RECHECK_NOTE = (
     "(자동 검사) 방금 답의 근거 {cited}는 이번 대화에서 검색된 적이 없다. "
     "search_docs로 매뉴얼(필요하면 규정)을 찾은 뒤, 검색 결과의 번호로만 근거를 달아 다시 답하라."
 )
+SEEN = "(앞에서 받은 조각 — 본문은 위의 검색 결과에 있다)"
 # 문맥이 num_ctx를 넘으면 Ollama는 오래된 대화(앞쪽 질문·도구 결과)를 잘라낸 뒤 남은 길이를 보고한다.
 # 그래서 보고된 길이는 num_ctx를 넘지 않는다 — 이만큼 가까우면 잘렸을 수 있다고 본다.
 CONTEXT_LIMIT_RATIO = 0.9
@@ -118,14 +119,18 @@ class Conversation:
             self.messages = [{"role": "system", "content": PROMPTS[self.prompt]}]
 
     def number(self, results: list[dict]) -> list[dict]:
-        """검색 조각에 이번 대화 안의 번호를 붙여, 모델이 볼 모양으로 돌려준다(id·점수는 빼고)."""
+        """검색 조각에 이번 대화 안의 번호를 붙여, 모델이 볼 모양으로 돌려준다(id·점수는 빼고).
+        이미 번호를 받은 조각은 본문을 다시 넣지 않는다 — 본문은 앞의 검색 결과에 있다. 이어지는 질문의 자동 검색은
+        대개 앞에서 받은 조각을 다시 가져와(5개 중 4개), 질문 하나에 약 1.7k 토큰씩 늘어 셋째 질문에서 한도 근처였다."""
         out = []
         for r in results:
             n = self._by_id.get(r["id"])
-            if n is None:
-                n = len(self.chunks) + 1
-                self._by_id[r["id"]] = n
-                self.chunks[n] = r
+            if n is not None:
+                out.append({"n": n, "source": r["source"], "locator": r["locator"], "title": r["title"], "text": SEEN})
+                continue
+            n = len(self.chunks) + 1
+            self._by_id[r["id"]] = n
+            self.chunks[n] = r
             out.append({"n": n, "source": r["source"], "locator": r["locator"], "title": r["title"], "text": r["text"]})
         return out
 

@@ -7,6 +7,7 @@ from contextlib import aclosing
 from app.agent import (
     MAX_RECHECKS,
     MAX_ROUNDS,
+    SEEN,
     Citation,
     Conversation,
     Done,
@@ -367,3 +368,17 @@ def test_failed_turn_also_forgets_its_search_chunks():
     run(conv, "이어서", broken, box)  # 자동 검색으로 [2]가 붙은 뒤 모델 오류
     assert list(conv.chunks) == [1]
     assert find_citations("근거 [2].", conv)[0].verified is False
+
+
+def test_a_chunk_seen_before_is_given_by_number_only():
+    """이어지는 질문의 자동 검색은 대개 앞에서 받은 조각을 다시 가져온다 — 본문은 다시 넣지 않는다(문맥 정리, 4단계)."""
+    box = FakeBox({"search_docs": [ToolResult(True, {"results": [CHUNK_44]}), ToolResult(True, {"results": [CHUNK_44, CHUNK_D]})]})
+    conv = Conversation()
+    run(conv, "첫 질문", FakeLLM(calls(("search_docs", {"query": "a"})), answer("답 [1].")), box)
+    llm = FakeLLM(answer("우회할 수 없다 [1]."))
+    events = run(conv, "이어서", llm, box)
+
+    seen, new = json.loads(llm.seen[0][-1]["content"])["results"]
+    assert seen == {"n": 1, "source": "manual", "locator": "매뉴얼 4.4", "title": CHUNK_44["title"], "text": SEEN}
+    assert new["n"] == 2 and new["text"] == CHUNK_D["text"]
+    assert [(c.n, c.verified) for c in events if isinstance(c, Citation)] == [(1, True)]  # 다시 준 번호도 인용할 수 있다
