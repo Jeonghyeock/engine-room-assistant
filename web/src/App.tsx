@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError, getAlarms, getScenarios, startScenario, streamChat, type Alarm, type Citation, type Scenario } from "./api";
+import { splitInline } from "./inline";
 import { applyEvent, newTurn, rolledBack, split, type Step, type Turn } from "./turn";
 
 const ANALYZE_ALL = "지금 울리는 알람을 분석하고 조치를 권고해 줘";
@@ -15,18 +16,16 @@ function stepLabel(s: Step): string {
 /** 답의 [n]을 누르면 근거 패널에서 그 조각을 연다. 되돌린 차례의 [n]은 버튼으로 만들지 않는다 —
  *  서버가 되돌린 번호는 다음 질문에서 다른 조각에 다시 붙을 수 있다. */
 function AnswerText({ text, citations, live, onCite }: { text: string; citations: Citation[]; live: boolean; onCite: (n: number) => void }) {
-  const parts = text.split(/(\[\d+\])/g);
   return (
     <p className="answer">
-      {parts.map((p, i) => {
-        const m = /^\[(\d+)\]$/.exec(p);
-        if (!m || !live) return <span key={i}>{p}</span>;
-        const n = Number(m[1]);
-        const c = citations.find((c) => c.n === n);
+      {splitInline(text).map((p, i) => {
+        if (p.kind === "bold") return <strong key={i}>{p.value}</strong>;
+        if (p.kind === "text" || !live) return <span key={i}>{p.value}</span>;
+        const c = citations.find((c) => c.n === p.n);
         const cls = c === undefined ? "cite" : c.verified ? "cite verified" : "cite unverified";
         return (
-          <button key={i} className={cls} onClick={() => onCite(n)} title={c ? c.locator : "근거 정보를 기다리는 중"}>
-            {p}
+          <button key={i} className={cls} onClick={() => onCite(p.n)} title={c ? c.locator : "근거 정보를 기다리는 중"}>
+            {p.value}
           </button>
         );
       })}
