@@ -4,6 +4,8 @@
 
 > **가상 데이터.** 선박·기관·설정값·매뉴얼은 교육용 가상이다. 규정(46 CFR Part 62)만 실제 원문이다.
 
+> Claude Code와 함께 만들었다.
+
 ![S2를 진짜 모델로: 알람 분석 → 우회 질문(자동 검색부터) → 셋째 질문은 중단](docs/images/ui-s2.png)
 
 문서: [설계](docs/DESIGN.md) · [진행 기록](docs/PROGRESS.md)(단계별 결과, 배운 것, 못 한 것) · [평가 결과](backend/evals/results/)
