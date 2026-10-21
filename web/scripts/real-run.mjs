@@ -1,4 +1,4 @@
-// 진짜 모델로 화면을 조작해 시간을 잰다 — CI 밖에서 한 번씩 돌리는 기록용(README 4단계).
+// 진짜 모델로 화면을 조작해 시간을 잰다 — CI 밖에서 한 번씩 돌리는 기록용(docs/PROGRESS.md 4단계).
 //
 //   (터미널 1) cd backend && uv run uvicorn app.api:app --port 8000 --timeout-graceful-shutdown 5
 //   (터미널 2) cd web && npm run dev -- --host 127.0.0.1
