@@ -13,4 +13,4 @@
 
 답 전문: `evals/results/transcripts/phase5-8b-q8-16k-2/`
 
-※ 서버: 따로 띄운 Ollama(FLASH_ATTENTION=1, KV_CACHE_TYPE=q8_0) — 로그에서 읽은 실제 적용: FA enabled, KV K q8_0·V q8_0 1224 MiB(적재 2번: qwen3:8b 1번, bge-m3 1번). 판정 qwen3:8b(같은 서버, num_ctx 16384). 첫 실행(`scenarios-phase5-8b-q8-16k.md`)과 답 전문이 같다(temperature 0.7이어도 같은 씨앗·같은 서버 상태에서 결정적으로 되풀이됨) — 독립된 두 번째 표본이 아니다.
+※ 서버: 따로 띄운 Ollama(FLASH_ATTENTION=1, KV_CACHE_TYPE=q8_0) — 로그에서 읽은 실제 적용: FA enabled, KV K q8_0·V q8_0 1224 MiB(적재 2번: qwen3:8b 1번, bge-m3 1번). 판정 qwen3:8b(같은 서버, num_ctx 16384). 첫 실행(`scenarios-phase5-8b-q8-16k.md`)과 답 전문 15개 중 14개가 같다(다른 것은 S2 seed2의 우회 답 하나, 나머지 14개는 도구 인자의 키 순서와 시간만 다름 — temperature 0.7이어도 같은 씨앗·같은 서버 상태에서 거의 되풀이됨). 독립된 두 번째 표본이 아니다.
