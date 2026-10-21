@@ -46,7 +46,7 @@
 
 - **프롬프트로 안 되는 것은 코드로 막았다.** "반드시 검색하라"고 지시해도 근거를 지어 붙였다. 근거 검사를 넣자 필수 근거가 1/12에서 8/12가 됐다.
 - **판정 모델은 위험한 답을 통과시켰다.** "안 된다"로 시작해 "기관장의 승인 없이는 불가능하다"로 끝난 답을 함정 기준에서 통과시켰다. 그래서 위험한 답은 정해진 문형으로 본다.
-- **같은 씨앗으로 다시 돌려도 답이 달랐다.** 씨앗은 재현 수단이 아니라 표본 수로 읽었다. 3단계 최종 설정과 5단계 권장 설정은 같은 설정으로 두 번 돌렸다.
+- **같은 씨앗으로 다시 돌려도 답이 달랐다.** 3단계 최종 설정을 두 번 돌리자 답 전문 15개가 모두 달랐다. 그래서 씨앗은 재현 수단이 아니라 표본 수로 읽었다. 다만 5단계에서 같은 서버를 띄운 채 다시 돌린 실행은 15개 중 14개가 같아, 독립된 두 번째 표본으로 치지 않았다.
 - **설정 이름이 아니라 실제 적용값을 읽었다.** flash attention은 기본값 `auto`로 이미 켜져 있었고, `qwen3:4b` 태그는 생각을 끌 수 없는 Thinking 변형이었다.
 - **4단계 리뷰의 주요 주장은 변이 시험으로 확인했다.** 해당 코드를 망가뜨리면 테스트가 실패하는지까지 봤다(잠금 해제 순서, 되돌림 등).
 
@@ -62,53 +62,35 @@
 
 ## 실행
 
-필요: Python 3.12, [uv](https://docs.astral.sh/uv/), [Ollama](https://ollama.com), Edge 또는 Chrome(매뉴얼 PDF 인쇄). 화면·E2E·MCP Inspector에는 Node.js 22(22.19 이상) 또는 24(CI는 24).
+필요: Python 3.12, [uv](https://docs.astral.sh/uv/), [Ollama](https://ollama.com). 화면에는 Node.js 22.19 이상 또는 24.
+
+1. 모델을 받고 색인을 만든다(`backend/`). 원문(`data/sources/` — CFR XML 2026-10-14 기준, 매뉴얼 PDF)은 레포에 들어 있다.
 
 ```sh
-ollama pull bge-m3            # 임베딩
-ollama pull qwen3:8b          # 대화·도구 호출(3단계)
+ollama pull bge-m3      # 임베딩
+ollama pull qwen3:8b    # 대화·도구 호출
 cd backend
-uv sync --group ingest        # Docling은 수집에만 쓴다(torch 포함이라 무겁다). 색인이 이미 있으면 uv sync만
+uv sync --group ingest  # Docling은 색인 만들 때만 쓴다(torch 포함이라 무겁다)
+uv run python -m ingest.build_index
+uv run pytest
+```
 
-uv run python -m ingest.build_manual   # tags.yaml + manual.md → data/sources/manual.pdf
-uv run python -m ingest.cfr fetch      # eCFR API → data/sources/cfr-46-part62.xml (받은 날 기준 최신)
-uv run python -m ingest.build_index    # 조각 → 임베딩 → data/index/
-uv run python -m evals.retrieval       # 검색 평가 → evals/results/
-uv run pytest                          # 색인·Ollama가 없으면 실제 검색 테스트 1개만 건너뜀
+2. API와 화면을 터미널 두 개에서 띄운다.
 
-# MCP 서버 (stdio)
-uv run python -m mcp_servers.ams_server --scenario S2
-uv run python -m mcp_servers.docs_server
-# MCP Inspector로 열어 보기
-npx @modelcontextprotocol/inspector uv run python -m mcp_servers.ams_server --scenario S2
-
-# 에이전트 (명령줄) — 질문을 여러 개 주면 한 대화로 이어서 묻는다
-uv run python -m app.cli --scenario S2 "지금 울리는 알람을 분석하고 조치를 권고해 줘" "트립을 잠시 우회하고 항해를 계속해도 되나요?"
-uv run python -m evals.scenarios --label 이름   # 시나리오 평가(S1~S3 × 씨앗 5) → evals/results/
-uv run python -m evals.judge_check             # 판정 모델 회귀 점검 → evals/results/judge-check.md
-uv run python -m evals.serving record          # 서빙 측정용으로 S2 차례의 모델 호출을 녹화(5단계)
-uv run python -m evals.serving run --label 이름 [--model ..] [--num-ctx ..] [--fa 0|1] [--kv f16|q8_0|q4_0]   # 그 설정으로 Ollama를 11435에 띄워 측정
-uv run python -m evals.serving embed           # 질의 임베딩을 CPU·GPU에 둘 때
-uv run python -m evals.serving scenarios --fa 1 --kv q8_0 -- --label 이름 --num-ctx 16384   # 그 설정의 서버로 시나리오 평가(-- 뒤는 evals.scenarios 인자)
-
-# API(4단계) — 화면이 쓴다. Ollama와 색인이 있어야 답한다.
-# 종료 시간 제한이 없으면 Ctrl+C가 돌고 있는 차례가 끝날 때까지 기다린다
+```sh
+# backend/
 uv run uvicorn app.api:app --port 8000 --timeout-graceful-shutdown 5
 ```
 
-화면 — 레포 루트에서, 다른 터미널에 위의 API를 띄운 채로:
-
 ```sh
-cd web
+# web/
 npm ci
-npm run dev        # http://localhost:5173 — /api는 API(8000)로 넘긴다
-npm test           # Vitest
-npx playwright install chromium   # 처음 한 번(Linux는 --with-deps chromium)
-npm run e2e        # 가짜 모델·가짜 도구로 API(8010)·화면(5180)을 띄워 E2E — Ollama·색인 없이 돈다
-node scripts/real-run.mjs 출력폴더   # 진짜 모델로 화면을 조작해 시간을 잰다(API와 npm run dev -- --host 127.0.0.1이 떠 있어야)
+npm run dev   # http://localhost:5173 — /api는 API(8000)로 넘긴다
 ```
 
-원문 `data/sources/`(CFR XML 2026-10-14 기준, 매뉴얼 PDF)은 레포에 들어 있어 `fetch`·`build_manual` 없이도 색인을 만들 수 있다.
+명령줄로 물어볼 수도 있다: `uv run python -m app.cli --scenario S2 "지금 울리는 알람을 분석하고 조치를 권고해 줘"`
+
+원문 다시 만들기, MCP 서버 단독 실행, 평가, 서빙 측정(Windows 전용), 화면 테스트와 E2E 명령은 [docs/COMMANDS.md](docs/COMMANDS.md)에 있다.
 
 ## 출처
 
