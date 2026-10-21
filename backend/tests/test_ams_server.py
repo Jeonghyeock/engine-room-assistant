@@ -81,7 +81,7 @@ def test_bad_scenario_from_env_is_rejected_cleanly():
     import subprocess
 
     env = {**os.environ, "AMS_SCENARIO": "S9", "PYTHONUTF8": "1"}
-    p = subprocess.run([sys.executable, "-m", "mcp_servers.ams_server"], cwd=BACKEND, env=env, capture_output=True, text=True, timeout=60)
+    p = subprocess.run([sys.executable, "-m", "mcp_servers.ams_server"], cwd=BACKEND, env=env, capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert p.returncode == 2 and "모르는 시나리오" in p.stderr and "Traceback" not in p.stderr
 
 
