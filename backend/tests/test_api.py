@@ -137,27 +137,31 @@ def test_switching_scenario_reopens_tools_and_forgets_conversations():
     assert old.status_code == 404  # 바꾸기 전 대화는 지워졌다
 
 
-def test_other_sites_cannot_switch_scenarios_or_reach_the_api():
-    """다른 사이트의 페이지가 본문 없는 POST로 대화를 지우거나(CSRF), DNS 리바인딩으로 API를 부르지 못한다(#5 리뷰).
-    화면(Vite)은 localhost·127.0.0.1의 아무 포트에서나 온다."""
+def test_other_origins_cannot_switch_scenarios_or_reach_the_api():
+    """다른 출처의 페이지가 본문 없는 POST로 대화를 지우거나(CSRF), DNS 리바인딩으로 API를 부르지 못한다(#5 리뷰).
+    화면은 Vite를 거쳐 와서 Origin과 Host가 같다. curl처럼 Origin이 없는 요청은 받는다."""
     app = create_app(llm=ScriptLLM(), box_factory=FakeToolBox, scenario="S1")
+    vite = {"Host": "localhost:5173"}
 
     async def go(c):
-        foreign = await c.post("/api/scenarios/S2/start", headers={"Origin": "https://evil.example"})
-        hidden = await c.post("/api/scenarios/S2/start", headers={"Origin": "null"})  # 출처를 숨긴 요청(no-referrer)
-        broken = await c.post("/api/scenarios/S2/start", headers={"Origin": "http://[::1"})
-        lookalike = await c.post("/api/scenarios/S2/start", headers={"Origin": "http://localhost.evil.example"})
+        refused = [
+            await c.post("/api/scenarios/S2/start", headers={"Origin": "https://evil.example"}),
+            await c.post("/api/scenarios/S2/start", headers={"Origin": "null"}),  # 출처를 숨긴 요청(no-referrer)
+            await c.post("/api/scenarios/S2/start", headers={**vite, "Origin": "http://localhost:8888"}),  # 같은 컴퓨터의 다른 앱
+            await c.post("/api/scenarios/S2/start", headers={"Sec-Fetch-Site": "cross-site"}),
+        ]
         rebound = await c.post("/api/chat", json={"message": "q"}, headers={"Host": "evil.example:8000"})
         current = (await c.get("/api/scenarios")).json()["current"]
-        vite = await c.post("/api/scenarios/S2/start", headers={"Origin": "http://localhost:5173"})
-        v6 = await c.post("/api/scenarios/S3/start", headers={"Origin": "http://[::1]:5173", "Host": "[::1]:8000"})
-        return [foreign, hidden, broken, lookalike], rebound, current, vite, v6
+        ui = await c.post("/api/scenarios/S2/start", headers={**vite, "Origin": "http://localhost:5173", "Sec-Fetch-Site": "same-origin"})
+        v6 = await c.post("/api/scenarios/S3/start", headers={"Host": "[::1]:5173", "Origin": "http://[::1]:5173"})
+        curl = await c.post("/api/scenarios/S1/start")
+        return refused, rebound, current, ui, v6, curl
 
-    refused, rebound, current, vite, v6 = asyncio.run(with_client(app, go))
+    refused, rebound, current, ui, v6, curl = asyncio.run(with_client(app, go))
     assert [r.status_code for r in refused] == [403] * 4
-    assert rebound.status_code == 400
+    assert rebound.status_code == 400 and not app.state.conversations  # 리바인딩 요청은 대화를 만들지 못했다
     assert current == "S1"  # 거절한 요청은 시나리오를 바꾸지 않았다
-    assert vite.json() == {"current": "S2"} and v6.json() == {"current": "S3"}
+    assert ui.json() == {"current": "S2"} and v6.json() == {"current": "S3"} and curl.json() == {"current": "S1"}
 
 
 def test_without_a_tool_box_no_turn_starts_until_a_scenario_opens():

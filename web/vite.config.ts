@@ -6,5 +6,7 @@ const backend = process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
 
 export default defineConfig({
   plugins: [react()],
-  server: { proxy: { "/api": backend } },
+  // Host를 그대로 넘긴다 — 백엔드가 Origin과 Host를 비교해 다른 출처의 POST를 거절한다(api.py same_origin).
+  // 문자열로만 적으면 Vite가 changeOrigin: true로 Host를 백엔드 주소로 바꾼다.
+  server: { proxy: { "/api": { target: backend, changeOrigin: false } } },
 });

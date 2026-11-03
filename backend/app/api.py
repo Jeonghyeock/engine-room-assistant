@@ -16,7 +16,7 @@
 끊김 감지는 Starlette가 ASGI 2.3 서버(uvicorn 0.54)에서 http.disconnect를 듣고 응답 태스크를 취소하는 데 기댄다.
 ASGI 2.4 서버로 바꾸면 Starlette는 끊김을 듣지 않으므로 중단을 다시 확인해야 한다(#20 리뷰).
 
-이 컴퓨터에서만 쓴다 — Host는 127.0.0.1·localhost만 받고(DNS 리바인딩), 다른 사이트에서 온 POST는 403(CSRF, #5 리뷰).
+이 컴퓨터에서만 쓴다 — Host는 127.0.0.1·localhost만 받고(DNS 리바인딩), 화면과 다른 출처에서 온 POST는 403(CSRF, #5 리뷰).
 """
 
 import asyncio
@@ -26,7 +26,6 @@ import json
 import logging
 import uuid
 from contextlib import aclosing, asynccontextmanager
-from urllib.parse import urlsplit
 
 import anyio
 from fastapi import FastAPI, HTTPException
@@ -81,26 +80,26 @@ async def pump(stream, queue: asyncio.Queue) -> None:
         queue.put_nowait(None)
 
 
-def local_origin(origin: str) -> bool:
-    try:
-        host = urlsplit(origin).hostname  # "null"이면 None, IPv6는 대괄호 없이
-    except ValueError:  # "http://[::1" 같은 깨진 값
+def same_origin(headers: Headers) -> bool:
+    """화면과 같은 출처에서 온 요청인지. 화면은 Vite를 거쳐 오고 Vite는 Host를 그대로 넘기므로(changeOrigin 없음)
+    페이지 출처(Origin)가 Host와 같아야 한다 — 같은 컴퓨터의 다른 포트(localhost:8888)도 다른 출처다.
+    브라우저는 GET·HEAD가 아닌 요청에 늘 Origin을 붙이고, 출처를 숨기면 "null"을 붙인다.
+    Origin이 없는 요청(curl·테스트)은 브라우저가 보낸 것이 아니라 받는다. Sec-Fetch-Site도 보이면 함께 본다."""
+    if headers.get("sec-fetch-site", "same-origin") not in ("same-origin", "none"):
         return False
-    return host is not None and (f"[{host}]" if ":" in host else host) in LOCAL_HOSTS
+    origin, host = headers.get("origin"), headers.get("host")
+    return origin is None or origin in (f"http://{host}", f"https://{host}")
 
 
 class SameOriginOnly:
-    """다른 사이트의 POST를 거절한다. 브라우저는 GET·HEAD가 아닌 요청에 늘 Origin을 붙이고, 출처를 숨기면 "null"을 붙인다.
-    화면(Vite)은 이 컴퓨터의 아무 포트에서나 온다. Origin이 없는 요청(curl·테스트)은 브라우저가 보낸 것이 아니라 받는다.
-    BaseHTTPMiddleware를 쓰지 않는다 — 스트림을 감싸면 끊김 감지(위)가 달라질 수 있다."""
+    """다른 출처의 POST를 거절한다. BaseHTTPMiddleware를 쓰지 않는다 — 스트림을 감싸면 끊김 감지(위)가 달라질 수 있다."""
 
     def __init__(self, app):
         self.app = app
 
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http" and scope["method"] not in ("GET", "HEAD"):
-            origin = Headers(scope=scope).get("origin")
-            if origin is not None and not local_origin(origin):
+            if not same_origin(Headers(scope=scope)):
                 await JSONResponse({"detail": CROSS_SITE}, status_code=403)(scope, receive, send)
                 return
         await self.app(scope, receive, send)
