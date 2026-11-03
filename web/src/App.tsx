@@ -120,19 +120,24 @@ export default function App() {
 
   const notify = (msg: string) => setNotices((ns) => [...ns, msg]);
 
+  async function loadAlarms() {
+    try {
+      setAlarms((await getAlarms()).alarms);
+    } catch (e) {
+      setAlarms([]); // 옛 시나리오의 알람을 남기면 그 버튼이 다른 배의 알람 이름으로 분석을 요청한다(#4 리뷰)
+      notify(`알람을 읽지 못했다: ${(e as Error).message}`);
+    }
+  }
+
   async function refresh() {
     try {
       const r = await getScenarios();
       setScenarios(r.scenarios);
-      setCurrent(r.current);
+      setCurrent(r.current ?? ""); // 바꾸기에 실패한 서버는 열린 시나리오가 없다
     } catch (e) {
       notify(`백엔드에 연결하지 못했다: ${(e as Error).message}`);
     }
-    try {
-      setAlarms((await getAlarms()).alarms);
-    } catch (e) {
-      notify(`알람을 읽지 못했다: ${(e as Error).message}`);
-    }
+    await loadAlarms();
   }
 
   useEffect(() => {
@@ -191,9 +196,12 @@ export default function App() {
       setCurrent(r.current);
       newConversation();
       setNotices([]);
-      setAlarms((await getAlarms()).alarms);
+      await loadAlarms(); // 바뀐 뒤 알람만 못 읽은 것은 '바꾸지 못했다'가 아니다
     } catch (e) {
+      // 503이면 서버는 대화를 지우고 도구 상자 없이 남았다(api.py) — 화면도 서버 상태로 맞춘다(#4 리뷰)
+      if (e instanceof ApiError && e.status === 503) newConversation();
       notify(`시나리오를 바꾸지 못했다: ${(e as Error).message}`);
+      await refresh();
     } finally {
       setSwitching(false);
     }
@@ -213,6 +221,12 @@ export default function App() {
         <label>
           시나리오{" "}
           <select value={current} onChange={(e) => switchScenario(e.target.value)} disabled={busy}>
+            {/* 열린 시나리오가 없을 때 — 이 자리가 없으면 첫 시나리오가 골라진 것처럼 보여 그것을 다시 고를 수 없다 */}
+            {current === "" && (
+              <option value="" disabled>
+                시나리오를 고른다
+              </option>
+            )}
             {scenarios.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.id} — {s.title}
