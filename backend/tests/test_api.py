@@ -68,7 +68,7 @@ def parse_sse(text: str) -> list[tuple[str, dict]]:
 
 async def with_client(app, fn):
     async with app.router.lifespan_context(app):  # ASGITransport는 lifespan을 돌리지 않는다
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as c:
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://127.0.0.1") as c:
             return await fn(c)
 
 
@@ -135,6 +135,29 @@ def test_switching_scenario_reopens_tools_and_forgets_conversations():
     assert switched.json() == {"current": "S3"} and unknown.status_code == 404
     assert after["alarms"][0]["tag"] == "TAG_S3"
     assert old.status_code == 404  # 바꾸기 전 대화는 지워졌다
+
+
+def test_other_sites_cannot_switch_scenarios_or_reach_the_api():
+    """다른 사이트의 페이지가 본문 없는 POST로 대화를 지우거나(CSRF), DNS 리바인딩으로 API를 부르지 못한다(#5 리뷰).
+    화면(Vite)은 localhost·127.0.0.1의 아무 포트에서나 온다."""
+    app = create_app(llm=ScriptLLM(), box_factory=FakeToolBox, scenario="S1")
+
+    async def go(c):
+        foreign = await c.post("/api/scenarios/S2/start", headers={"Origin": "https://evil.example"})
+        hidden = await c.post("/api/scenarios/S2/start", headers={"Origin": "null"})  # 출처를 숨긴 요청(no-referrer)
+        broken = await c.post("/api/scenarios/S2/start", headers={"Origin": "http://[::1"})
+        lookalike = await c.post("/api/scenarios/S2/start", headers={"Origin": "http://localhost.evil.example"})
+        rebound = await c.post("/api/chat", json={"message": "q"}, headers={"Host": "evil.example:8000"})
+        current = (await c.get("/api/scenarios")).json()["current"]
+        vite = await c.post("/api/scenarios/S2/start", headers={"Origin": "http://localhost:5173"})
+        v6 = await c.post("/api/scenarios/S3/start", headers={"Origin": "http://[::1]:5173", "Host": "[::1]:8000"})
+        return [foreign, hidden, broken, lookalike], rebound, current, vite, v6
+
+    refused, rebound, current, vite, v6 = asyncio.run(with_client(app, go))
+    assert [r.status_code for r in refused] == [403] * 4
+    assert rebound.status_code == 400
+    assert current == "S1"  # 거절한 요청은 시나리오를 바꾸지 않았다
+    assert vite.json() == {"current": "S2"} and v6.json() == {"current": "S3"}
 
 
 def test_without_a_tool_box_no_turn_starts_until_a_scenario_opens():
