@@ -55,4 +55,13 @@ def search(query: str, k: int = 5, source: str | None = None) -> list[dict]:
 
 
 def all_locators() -> set[str]:
-    return set(_table().to_arrow().column("locator").to_pylist())
+    # locator 열만 읽는다(임베딩 벡터까지 통째로 읽지 않게)
+    t = _table()
+    return set(t.search().select(["locator"]).limit(t.count_rows()).to_arrow().column("locator").to_pylist())
+
+
+def split_sections(locators: set[str]) -> set[str]:
+    """문단으로 잘린 조(예: §62.35-50 — 색인에 §62.35-50(a) 같은 문단 조각이 있다).
+    그 조의 위치가 조 전체인 조각은 첫 문단 앞의 머리글뿐이라 하위 문단을 품지 않는다.
+    검색 결과 표시(docs_server)와 평가(evals.retrieval.covers)가 같은 규칙을 쓴다."""
+    return {loc.split("(", 1)[0] for loc in locators if "(" in loc}
