@@ -88,6 +88,8 @@ npm ci
 npm run dev   # http://localhost:5173 — /api는 API(8000)로 넘긴다
 ```
 
+API는 이 컴퓨터에서만 받는다. Host가 localhost·127.0.0.1이 아니면 400이고(다른 기기에서 화면을 여는 구성은 지원하지 않는다), 화면과 다른 출처에서 온 POST는 403이다.
+
 명령줄로 물어볼 수도 있다: `uv run python -m app.cli --scenario S2 "지금 울리는 알람을 분석하고 조치를 권고해 줘"`
 
 원문 다시 만들기, MCP 서버 단독 실행, 평가, 서빙 측정(Windows 전용), 화면 테스트와 E2E 명령은 [docs/COMMANDS.md](docs/COMMANDS.md)에 있다.
