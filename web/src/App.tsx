@@ -129,15 +129,21 @@ export default function App() {
     }
   }
 
-  async function refresh() {
+  /** 서버 상태를 다시 읽는다. 열린 시나리오(바꾸기에 실패한 서버면 null)를, 읽지 못하면 undefined를 돌려준다. */
+  async function refresh(): Promise<string | null | undefined> {
+    let open: string | null;
     try {
       const r = await getScenarios();
       setScenarios(r.scenarios);
-      setCurrent(r.current ?? ""); // 바꾸기에 실패한 서버는 열린 시나리오가 없다
+      open = r.current;
     } catch (e) {
       notify(`백엔드에 연결하지 못했다: ${(e as Error).message}`);
+      return undefined;
     }
-    await loadAlarms();
+    setCurrent(open ?? "");
+    if (open === null) setAlarms([]); // 도구 상자가 없으니 알람도 없다 — 읽으면 같은 실패를 한 번 더 알린다
+    else await loadAlarms();
+    return open;
   }
 
   useEffect(() => {
@@ -191,17 +197,21 @@ export default function App() {
   async function switchScenario(id: string) {
     if (busy) return;
     setSwitching(true);
+    const before = current;
     try {
       const r = await startScenario(id);
-      setCurrent(r.current);
+      setCurrent(r.current ?? "");
       newConversation();
       setNotices([]);
       await loadAlarms(); // 바뀐 뒤 알람만 못 읽은 것은 '바꾸지 못했다'가 아니다
     } catch (e) {
-      // 503이면 서버는 대화를 지우고 도구 상자 없이 남았다(api.py) — 화면도 서버 상태로 맞춘다(#4 리뷰)
-      if (e instanceof ApiError && e.status === 503) newConversation();
       notify(`시나리오를 바꾸지 못했다: ${(e as Error).message}`);
-      await refresh();
+      // 서버는 바꾸기를 시작하면 대화부터 지운다(api.py) — 도구 서버를 못 띄우면 열린 시나리오 없이 남는다. 응답 코드
+      // (503·프록시 오류)보다 서버 상태를 믿는다: 열린 시나리오가 달라졌거나 알 수 없으면 화면 대화도 버리고,
+      // 모를 때는 셀렉트를 빈 자리로 두어 어떤 시나리오든 다시 고를 수 있게 한다(#4 리뷰).
+      const open = await refresh();
+      if (open === undefined) setCurrent("");
+      if (open === undefined || (open ?? "") !== before) newConversation();
     } finally {
       setSwitching(false);
     }
@@ -271,13 +281,13 @@ export default function App() {
             ask(input);
           }}
         >
-          <input aria-label="질문" value={input} onChange={(e) => setInput(e.target.value)} placeholder="질문 (예: 트립을 잠시 우회해도 되나요?)" disabled={busy} />
+          <input aria-label="질문" value={input} onChange={(e) => setInput(e.target.value)} placeholder="질문 (예: 트립을 잠시 우회해도 되나요?)" disabled={busy || current === ""} />
           {streaming ? (
             <button type="button" className="stop" onClick={() => abortRef.current?.abort()}>
               중단
             </button>
           ) : (
-            <button type="submit" disabled={!input.trim() || switching}>
+            <button type="submit" disabled={!input.trim() || switching || current === ""}>
               보내기
             </button>
           )}
