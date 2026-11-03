@@ -13,7 +13,7 @@ function stepLabel(s: Step): string {
   return `${s.auto ? "(자동) " : ""}${s.tool}(${args})`;
 }
 
-/** 답의 [n]을 누르면 근거 패널에서 그 조각을 연다. 되돌린 차례의 [n]은 버튼으로 만들지 않는다 —
+/** 답의 확인된 [n]을 누르면 근거 패널에서 그 조각을 연다. 되돌린 차례의 [n]은 버튼으로 만들지 않는다 —
  *  서버가 되돌린 번호는 다음 질문에서 다른 조각에 다시 붙을 수 있다. 끝난 답(settled)에서 서버가 인용으로 보지
  *  않은 번호도 글자로 둔다. */
 function AnswerText({
@@ -38,6 +38,12 @@ function AnswerText({
         let node;
         if (p.kind === "text" || view === null) {
           node = p.value;
+        } else if (!view.button) {
+          node = (
+            <span className={view.cls} title={view.title}>
+              {p.value}
+            </span>
+          );
         } else {
           const n = p.n;
           node = (

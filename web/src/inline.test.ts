@@ -52,15 +52,25 @@ describe("인용 번호 — 백엔드(agent._NUM_GROUP)와 같은 규칙(#3 리�
   it("백엔드가 펼치지 않는 범위(a > b, 10 넘게 벌어짐)는 글자", () => {
     expect(splitInline("[3-1] [1-30]")).toEqual([t("[3-1] [1-30]")]);
   });
+
+  it("전각 쉼표·숫자, 다른 범위 기호와 공백도 백엔드처럼 읽는다", () => {
+    expect(splitInline("【１，２】")).toEqual([t("【"), n("１", 1), t("，"), n("２", 2), t("】")]);
+    expect(splitInline("[1 – 2, 4~5]")).toEqual([t("["), n("1", 1), t(" – "), n("2", 2), t(", "), n("4", 4), t("~"), n("5", 5), t("]")]);
+  });
+
+  it("1~99 경계를 걸친 범위는 범위 안의 끝만 누른다", () => {
+    expect(splitInline("[0-3]")).toEqual([t("[0-"), n("3", 3), t("]")]);
+    expect(splitInline("[95-100]")).toEqual([t("["), n("95", 95), t("-100]")]);
+  });
 });
 
 describe("citeView", () => {
   const cit = (num: number, verified: boolean) => ({ n: num, chunk_id: "x", source: "manual", locator: `매뉴얼 4.${num}`, title: "t", snippet: "s", verified });
 
-  it("확인된 인용과 확인되지 않은 인용, 아직 정보가 오지 않은 인용을 구별한다", () => {
-    expect(citeView(1, [cit(1, true)], false)).toEqual({ cls: "cite verified", title: "매뉴얼 4.1" });
-    expect(citeView(1, [cit(1, false)], true)).toEqual({ cls: "cite unverified", title: "매뉴얼 4.1" });
-    expect(citeView(2, [cit(1, true)], false)).toEqual({ cls: "cite", title: "근거 정보를 기다리는 중" });
+  it("확인된 인용과 확인되지 않은 인용, 아직 정보가 오지 않은 인용을 구별한다 — 근거 패널에 있는 확인된 인용만 누른다", () => {
+    expect(citeView(1, [cit(1, true)], false)).toEqual({ cls: "cite verified", title: "매뉴얼 4.1", button: true });
+    expect(citeView(1, [cit(1, false)], true)).toEqual({ cls: "cite unverified", title: "매뉴얼 4.1", button: false });
+    expect(citeView(2, [cit(1, true)], false)).toEqual({ cls: "cite", title: "근거 정보를 기다리는 중", button: false });
   });
 
   it("끝난 답에서 서버가 인용으로 보지 않은 번호는 글자다", () => {
