@@ -134,9 +134,13 @@ class Conversation:
                 n = len(self.chunks) + 1
                 self._by_id[r["id"]] = n
                 self.chunks[n] = r
-            elif self.seen_safe:
-                out.append({"n": n, "source": r["source"], "locator": r["locator"], "title": r["title"], "text": SEEN})
-                continue
+            else:
+                # 머리글 표시는 색인에 따라 바뀔 수 있어(다시 만든 색인) 가장 최근 검색의 값을 따른다
+                if "header" in r:
+                    self.chunks[n] = {**self.chunks[n], "header": r["header"]}
+                if self.seen_safe:
+                    out.append({"n": n, "source": r["source"], "locator": r["locator"], "title": r["title"], "text": SEEN})
+                    continue
             out.append({"n": n, "source": r["source"], "locator": r["locator"], "title": r["title"], "text": r["text"]})
         return out
 
@@ -214,9 +218,13 @@ def find_citations(answer: str, conv: Conversation) -> list[Citation]:
     by_locator: dict[str, list[int]] = {}
     for n, c in conv.chunks.items():
         by_locator.setdefault(_key(c["locator"]), []).append(n)
-    # 하위 문단 인용을 품는 위치: 문단으로 잘린 조의 머리글 조각(header)은 위치가 조 전체(§62.35-50)여도 첫 문단 앞의 글뿐이라
-    # §62.35-50(d)·(z)를 확인하지 않는다 — evals/retrieval.covers와 같은 규칙.
-    whole = {k for k, ns in by_locator.items() if not all(conv.chunks[n].get("header") for n in ns)}
+    # 하위 문단 인용을 품는 위치 — evals/retrieval.covers와 같은 규칙. 문단 조각(§62.35-50(d))은 그 아래 (d)(1)을 품는다.
+    # 위치가 조 전체인 규정 조각은 도구 서버가 머리글이 아니라고 밝힌 것(header=False)만 품는다. 문단으로 잘린 조의 머리글은
+    # 첫 문단 앞의 글뿐이고, 표시가 없으면(색인을 못 읽었거나 다른 도구 서버) 확인하지 않는 쪽이 안전하다.
+    def covers_sub(c: dict) -> bool:
+        return c["source"] != "cfr" or "(" in c["locator"] or c.get("header") is False
+
+    whole = {k for k, ns in by_locator.items() if any(covers_sub(conv.chunks[n]) for n in ns)}
     seen: set[str] = set()
     for m in _LOCATOR.finditer(answer):
         loc = f"§{m[1]}" if m[1] else f"매뉴얼 {m[2]}"

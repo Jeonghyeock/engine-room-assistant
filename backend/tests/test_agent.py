@@ -143,18 +143,30 @@ def test_citations_by_number_and_by_locator():
 
 def test_header_chunk_does_not_verify_subparagraph_citations():
     """문단으로 잘린 조의 머리글 조각(header)만 검색됐으면 그 조의 하위 문단 인용은 확인되지 않는다(evals covers와 같은 규칙).
-    잘리지 않은 조(조 전체가 한 조각)는 하위 문단까지 품는다."""
+    도구 서버가 머리글이 아니라고 밝힌 조 전체 조각(header=False)은 하위 문단까지 품고, 표시가 없으면 품지 않는다(안전한 쪽)."""
     conv = Conversation()
     header = {**CHUNK_D, "id": "cfr:§62.35-50", "locator": "§62.35-50", "text": "minimum instrumentation … listed in table 1", "header": True}
-    whole = {**CHUNK_D, "id": "cfr:§62.30-1", "locator": "§62.30-1", "title": "§62.30-1 …", "text": "(a) … (b) …"}
-    conv.number([header, whole])
-    cites = find_citations("우회 장치를 둘 수 없다(§62.35-50(d)). 없는 문단 §62.35-50(z). 조 전체 §62.35-50. 그리고 §62.30-1(b).", conv)
+    whole = {**CHUNK_D, "id": "cfr:§62.30-1", "locator": "§62.30-1", "title": "§62.30-1 …", "text": "(a) … (b) …", "header": False}
+    unknown = {**CHUNK_D, "id": "cfr:§62.25-1", "locator": "§62.25-1", "title": "§62.25-1 …", "text": "…"}  # header 표시 없음
+    conv.number([header, whole, unknown])
+    cites = find_citations("우회 장치를 둘 수 없다(§62.35-50(d)). 없는 문단 §62.35-50(z). 조 전체 §62.35-50. 그리고 §62.30-1(b), §62.25-1(a).", conv)
     assert [(c.n, c.locator, c.verified) for c in cites] == [
         (None, "§62.35-50(d)", False),  # 머리글만으로는 확인되지 않는다
         (None, "§62.35-50(z)", False),
         (1, "§62.35-50", True),  # 조 전체 인용은 그 조각 그대로
         (2, "§62.30-1", True),  # 잘리지 않은 조는 하위 문단을 품는다
+        (None, "§62.25-1(a)", False),  # 머리글인지 모르면 확인하지 않는다
     ]
+
+
+def test_header_flag_follows_the_latest_search():
+    """같은 조각을 다시 받으면 머리글 표시는 최근 검색의 값을 따른다(색인을 다시 만들었을 수 있다)."""
+    conv = Conversation()
+    chunk = {**CHUNK_D, "id": "cfr:§62.30-1", "locator": "§62.30-1", "text": "(a) … (b) …"}
+    conv.number([chunk])  # 처음엔 표시 없음
+    assert not find_citations("§62.30-1(b)", conv)[0].verified
+    conv.number([{**chunk, "header": False}])
+    assert find_citations("§62.30-1(b)", conv)[0].verified
 
 
 def test_tool_error_goes_back_to_the_model_and_it_retries():

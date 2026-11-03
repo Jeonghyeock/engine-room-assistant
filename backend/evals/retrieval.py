@@ -30,8 +30,7 @@ def covers(loc: str, gold: str, index_locs: set[str]) -> bool:
         return True
     if gold.startswith(loc + "("):
         is_paragraph = "(" in loc
-        section_split = any(other.startswith(loc + "(") for other in index_locs)
-        return is_paragraph or not section_split
+        return is_paragraph or loc not in store.split_sections(index_locs)  # 실행 중 근거 검사와 같은 규칙
     return loc.startswith(gold + "(")
 
 

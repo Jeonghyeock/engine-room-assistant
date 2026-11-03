@@ -100,18 +100,31 @@ def test_cfr_results_have_no_page():
     assert "page" not in out
 
 
+def _cfr_row(loc):
+    return {**ROW, "id": f"cfr:{loc}", "source": "cfr", "locator": loc, "page": 0}
+
+
 def test_header_chunk_of_a_split_section_is_marked():
-    """문단으로 잘린 조의 조 전체 위치 조각(머리글)에만 header를 붙인다 — 잘리지 않은 조·문단 조각은 아니다."""
-    row = lambda loc: {**ROW, "id": f"cfr:{loc}", "source": "cfr", "locator": loc, "page": 0}
-    hits = [row("§62.35-50"), row("§62.30-1"), row("§62.35-50(d)"), row("§62.35-50 표 1")]
+    """위치가 조 전체인 규정 조각에 머리글인지(header)를 밝힌다 — 문단으로 잘린 조면 True, 아니면 False. 문단 조각엔 붙이지 않는다."""
+    hits = [_cfr_row("§62.35-50"), _cfr_row("§62.30-1"), _cfr_row("§62.35-50(d)"), _cfr_row("§62.35-50 표 1")]
     index = {"§62.35-50", "§62.35-50(a)", "§62.35-50(d)", "§62.30-1", "§62.35-50 표 1"}
     out = call(create_server(lambda *a, **k: hits, lambda: index), {"query": "x"}).structured_content["results"]
-    assert [(r["locator"], r.get("header", False)) for r in out] == [
+    assert [(r["locator"], r.get("header")) for r in out] == [
         ("§62.35-50", True),
         ("§62.30-1", False),
-        ("§62.35-50(d)", False),
+        ("§62.35-50(d)", None),
         ("§62.35-50 표 1", False),
     ]
+
+
+def test_search_still_works_when_locators_cannot_be_read():
+    """머리글 판정용 위치 목록을 못 읽어도 검색은 실패하지 않고, header 를 붙이지 않는다(근거 검사는 그 조각으로 하위 문단을 확인하지 않는다)."""
+
+    def broken():
+        raise store.IndexUnavailableError("다시 만드는 중")
+
+    out = call(create_server(lambda *a, **k: [_cfr_row("§62.35-50")], broken), {"query": "x"}).structured_content["results"]
+    assert [(r["locator"], r.get("header")) for r in out] == [("§62.35-50", None)]
 
 
 def _index_and_ollama_ready() -> bool:
