@@ -49,8 +49,10 @@ main { display: flex; flex-direction: column; }
 .steps .fail .mark { color: var(--fail); }
 .earlier { font-size: 13px; color: var(--muted); margin: 6px 0; }
 .answer { white-space: pre-wrap; line-height: 1.6; margin: 8px 0; }
-.cite { border: none; background: #e8eefb; color: var(--accent); border-radius: 4px; padding: 0 3px; font-size: 0.9em; }
-.cite.unverified { background: #fde7c2; color: var(--warn); }
+/* 근거 정보를 기다리는 중(회색 점선) · 확인됨(파랑) · 검색된 적 없음(주황) */
+.cite { border: 1px dashed var(--line); background: #f1f2f4; color: var(--muted); border-radius: 4px; padding: 0 3px; font-size: 0.9em; }
+.cite.verified { border-style: solid; border-color: transparent; background: #e8eefb; color: var(--accent); }
+.cite.unverified { border-style: solid; border-color: transparent; background: #fde7c2; color: var(--warn); }
 .status, .meta { font-size: 12px; color: var(--muted); }
 .warn { color: var(--warn); font-size: 13px; }
 .error { color: var(--fail); font-size: 13px; margin: 6px 0; }
