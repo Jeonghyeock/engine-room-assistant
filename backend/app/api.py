@@ -15,6 +15,8 @@
 
 끊김 감지는 Starlette가 ASGI 2.3 서버(uvicorn 0.54)에서 http.disconnect를 듣고 응답 태스크를 취소하는 데 기댄다.
 ASGI 2.4 서버로 바꾸면 Starlette는 끊김을 듣지 않으므로 중단을 다시 확인해야 한다(#20 리뷰).
+
+이 컴퓨터에서만 쓴다 — Host는 127.0.0.1·localhost만 받고(DNS 리바인딩), 다른 사이트에서 온 POST는 403(CSRF, #5 리뷰).
 """
 
 import asyncio
@@ -24,10 +26,13 @@ import json
 import logging
 import uuid
 from contextlib import aclosing, asynccontextmanager
+from urllib.parse import urlsplit
 
 import anyio
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
+from starlette.datastructures import Headers
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, Field
 
 from ams.scenario import list_ids, load
@@ -43,6 +48,8 @@ EVENT_NAMES = {StepStart: "step_start", StepEnd: "step_end", Token: "token", Cit
 BUSY = "다른 질문에 답하는 중이다 — 끝나거나 중단한 뒤에 다시 보낸다"
 NO_TOOLS = "도구 서버가 열려 있지 않다 — 시나리오를 다시 고른다"
 UNKNOWN = "모르는 대화다 — 시나리오를 바꾸면 대화가 지워진다"
+CROSS_SITE = "다른 사이트에서 온 요청이다 — 이 컴퓨터의 화면에서만 보낸다"
+LOCAL_HOSTS = ["127.0.0.1", "localhost", "[::1]"]  # Host 머리 꼴 — IPv6에 대괄호가 붙는다
 
 
 class ChatRequest(BaseModel):
@@ -74,6 +81,31 @@ async def pump(stream, queue: asyncio.Queue) -> None:
         queue.put_nowait(None)
 
 
+def local_origin(origin: str) -> bool:
+    try:
+        host = urlsplit(origin).hostname  # "null"이면 None, IPv6는 대괄호 없이
+    except ValueError:  # "http://[::1" 같은 깨진 값
+        return False
+    return host is not None and (f"[{host}]" if ":" in host else host) in LOCAL_HOSTS
+
+
+class SameOriginOnly:
+    """다른 사이트의 POST를 거절한다. 브라우저는 GET·HEAD가 아닌 요청에 늘 Origin을 붙이고, 출처를 숨기면 "null"을 붙인다.
+    화면(Vite)은 이 컴퓨터의 아무 포트에서나 온다. Origin이 없는 요청(curl·테스트)은 브라우저가 보낸 것이 아니라 받는다.
+    BaseHTTPMiddleware를 쓰지 않는다 — 스트림을 감싸면 끊김 감지(위)가 달라질 수 있다."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and scope["method"] not in ("GET", "HEAD"):
+            origin = Headers(scope=scope).get("origin")
+            if origin is not None and not local_origin(origin):
+                await JSONResponse({"detail": CROSS_SITE}, status_code=403)(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
+
+
 @functools.cache
 def _scenario_list() -> tuple[dict, ...]:
     return tuple({"id": s.id, "title": s.title, "summary": s.summary} for s in map(load, list_ids()))
@@ -95,6 +127,8 @@ def create_app(llm=stream_chat, box_factory=ToolBox, scenario: str = DEFAULT_SCE
 
     app = FastAPI(title="engine-room-assistant", lifespan=lifespan)
     app.state.host, app.state.conversations, app.state.turn = host, conversations, turn
+    app.add_middleware(SameOriginOnly)
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=LOCAL_HOSTS)
 
     @app.post("/api/chat")
     async def chat(req: ChatRequest) -> StreamingResponse:
