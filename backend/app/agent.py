@@ -214,6 +214,9 @@ def find_citations(answer: str, conv: Conversation) -> list[Citation]:
     by_locator: dict[str, list[int]] = {}
     for n, c in conv.chunks.items():
         by_locator.setdefault(_key(c["locator"]), []).append(n)
+    # 하위 문단 인용을 품는 위치: 문단으로 잘린 조의 머리글 조각(header)은 위치가 조 전체(§62.35-50)여도 첫 문단 앞의 글뿐이라
+    # §62.35-50(d)·(z)를 확인하지 않는다 — evals/retrieval.covers와 같은 규칙.
+    whole = {k for k, ns in by_locator.items() if not all(conv.chunks[n].get("header") for n in ns)}
     seen: set[str] = set()
     for m in _LOCATOR.finditer(answer):
         loc = f"§{m[1]}" if m[1] else f"매뉴얼 {m[2]}"
@@ -222,7 +225,7 @@ def find_citations(answer: str, conv: Conversation) -> list[Citation]:
             continue
         seen.add(key)
         ns = by_locator.get(key) or next(
-            (v for k, v in by_locator.items() if key.startswith(k + "(") or k.startswith(key + "(") or k.startswith(key + "표")),
+            (v for k, v in by_locator.items() if (key.startswith(k + "(") and k in whole) or k.startswith(key + "(") or k.startswith(key + "표")),
             None,
         )
         if ns is None:

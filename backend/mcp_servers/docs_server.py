@@ -39,9 +39,14 @@ SEARCH_DOC = f"""매뉴얼·규정에서 질문과 가까운 조각(results) {TO
 매뉴얼 조각에는 PDF 쪽 번호(page)도 있다."""
 
 
-def create_server(search: SearchFn = store.search) -> MCPServer:
-    """search는 테스트에서 가짜로 바꿔 끼울 수 있다(CI에는 색인·Ollama가 없다)."""
+def create_server(search: SearchFn = store.search, locators: Callable[[], set[str]] = store.all_locators) -> MCPServer:
+    """search·locators는 테스트에서 가짜로 바꿔 끼울 수 있다(CI에는 색인·Ollama가 없다)."""
     server = MCPServer("docs", instructions=INSTRUCTIONS)
+
+    def split_sections() -> set[str]:
+        """문단으로 잘린 조(예: §62.35-50). 그 조의 위치가 조 전체인 조각은 첫 문단 앞의 머리글뿐이다.
+        검색할 때마다 읽는다 — 다른 프로세스가 색인을 다시 만들면 다음 검색부터 새 색인을 본다(store._table과 같다)."""
+        return {loc.split("(", 1)[0] for loc in locators() if "(" in loc}
 
     @server.tool(annotations=READ_ONLY, description=inspect.cleandoc(SEARCH_DOC))
     def search_docs(
@@ -59,10 +64,17 @@ def create_server(search: SearchFn = store.search) -> MCPServer:
             log.warning("임베딩 요청 실패: %r", e)
             raise ToolError("임베딩 서버(Ollama)에 연결하지 못해 검색할 수 없다.") from e
         results = []
+        split: set[str] | None = None  # 조 전체 위치의 규정 조각이 있을 때만 한 번 읽는다
         for h in hits:
             row = {f: h[f] for f in ("id", "source", "locator", "title", "text", "score")}
             if h.get("page"):  # 규정(CFR)은 쪽이 없어 0 — 내보내지 않는다
                 row["page"] = h["page"]
+            # 머리글 조각 표시. 근거 검사(agent.find_citations)가 이 조각으로 하위 문단 인용(§62.35-50(d))을 확인하지 않게 한다
+            # — evals/retrieval.covers와 같은 규칙. 모델에게 보여 주는 글에는 넣지 않는다(Conversation.number).
+            if h["source"] == "cfr" and "(" not in h["locator"]:
+                split = split_sections() if split is None else split
+                if h["locator"] in split:
+                    row["header"] = True
             results.append(row)
         return {"results": results}
 

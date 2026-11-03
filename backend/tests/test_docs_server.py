@@ -100,6 +100,20 @@ def test_cfr_results_have_no_page():
     assert "page" not in out
 
 
+def test_header_chunk_of_a_split_section_is_marked():
+    """문단으로 잘린 조의 조 전체 위치 조각(머리글)에만 header를 붙인다 — 잘리지 않은 조·문단 조각은 아니다."""
+    row = lambda loc: {**ROW, "id": f"cfr:{loc}", "source": "cfr", "locator": loc, "page": 0}
+    hits = [row("§62.35-50"), row("§62.30-1"), row("§62.35-50(d)"), row("§62.35-50 표 1")]
+    index = {"§62.35-50", "§62.35-50(a)", "§62.35-50(d)", "§62.30-1", "§62.35-50 표 1"}
+    out = call(create_server(lambda *a, **k: hits, lambda: index), {"query": "x"}).structured_content["results"]
+    assert [(r["locator"], r.get("header", False)) for r in out] == [
+        ("§62.35-50", True),
+        ("§62.30-1", False),
+        ("§62.35-50(d)", False),
+        ("§62.35-50 표 1", False),
+    ]
+
+
 def _index_and_ollama_ready() -> bool:
     try:
         store._table()
