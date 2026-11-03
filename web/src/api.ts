@@ -68,7 +68,7 @@ async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const getAlarms = () => getJson<{ scenario: string; alarms: Alarm[] }>("/api/alarms");
-export const getScenarios = () => getJson<{ current: string; scenarios: Scenario[] }>("/api/scenarios");
+export const getScenarios = () => getJson<{ current: string | null; scenarios: Scenario[] }>("/api/scenarios");
 export const startScenario = (id: string) => getJson<{ current: string }>(`/api/scenarios/${id}/start`, { method: "POST" });
 
 /** 질문 하나의 이벤트 스트림을 끝까지 읽는다. signal을 끊으면(중단 버튼) 서버는 그 차례를 되돌린다. */
