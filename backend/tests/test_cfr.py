@@ -37,6 +37,32 @@ def test_roman_i_stays_under_its_paragraph(chunks):
     assert "Note 1 to paragraph (b)(1): A note." in b.text
 
 
+def test_roman_i_after_h_is_a_subitem_when_ii_follows():
+    """(h) 다음의 (i)도 뒤에 (ii)가 오면 (h)(2) 아래 로마 숫자다. 맨 위 (i)는 그 뒤에 따로 온다."""
+    letters = "abcdefg"
+    paras = "".join(f"<P>({c}) Para {c}.</P>" for c in letters)
+    xml = f"""<DIV5><DIV8 N="99.1-2" TYPE="SECTION"><HEAD>&#xA7; 99.1-2 Test.</HEAD>{paras}
+<P>(h) <I>Burner.</I> (1) Detector.</P>
+<P>(2) Valve must close when—</P>
+<P>(i) Loss of burner flame occurs;</P>
+<P>(ii) Actuated by the trip system;</P>
+<P>(i) Top-level i.</P>
+<P>(j) Top-level j.</P>
+</DIV8></DIV5>"""
+    by_loc = {c.locator: c.text for c in cfr.parse(xml)}
+    assert "(i) Loss of burner flame occurs;" in by_loc["§99.1-2(h)"] and "(ii) Actuated" in by_loc["§99.1-2(h)"]
+    assert by_loc["§99.1-2(i)"] == "(i) Top-level i."
+    assert by_loc["§99.1-2(j)"] == "(j) Top-level j."
+
+
+def test_roman_continuation_is_not_a_top_level_letter():
+    """(iv) 다음의 (v), (ix) 다음의 (x)는 로마 숫자 목록의 이어짐이다. 앞 표지가 로마 숫자가 아니면 맨 위 문단."""
+    assert cfr._roman_subitem("v", "iv", None)
+    assert cfr._roman_subitem("x", "ix", None)
+    assert not cfr._roman_subitem("v", "3", None)
+    assert not cfr._roman_subitem("i", "2", "j")
+
+
 def test_revision_history_is_dropped(chunks):
     assert not any("CGD" in c.text for c in chunks)
 
@@ -56,3 +82,6 @@ def test_real_part62_has_the_clauses_scenarios_cite():
     assert "Override of overspeed and loss of forced lubrication pressure" in by_loc["§62.35-50(d)"].text
     assert "(2) Systems with remote instrumentation must have provisions" in by_loc["§62.25-20(b)"].text
     assert "must be failsafe" in by_loc["§62.30-1(b)"].text
+    # (h)(2) 아래의 버너 밸브 닫힘 조건 (i)~(iv)는 (h)에 남고 (i) 조각에 섞이지 않는다
+    assert "(i) Loss of burner flame occurs;" in by_loc["§62.35-20(h)"].text
+    assert "Loss of burner flame" not in by_loc["§62.35-20(i)"].text
