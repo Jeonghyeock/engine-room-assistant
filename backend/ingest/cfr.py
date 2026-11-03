@@ -49,17 +49,12 @@ def _next_letter(cur: str | None) -> str:
 
 
 ANY_MARKER = re.compile(r"^\(([a-z]+|\d+)\)")
-ROMAN = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xi", "xii"]
 
 
-def _roman_subitem(letter: str, prev: str | None, nxt: str | None) -> bool:
-    """다음 맨 위 문단 글자(예: (h) 다음의 (i))가 실은 로마 숫자 하위 항목인지 — 앞뒤 문단의 표지로 가린다.
-    (i) 다음이 (ii)면 로마 숫자 목록의 시작이고(§62.35-20(h)(2)(i)), (iv) 다음의 (v)·(ix) 다음의 (x)는 그 목록의 이어짐이다."""
-    if letter not in ROMAN:
-        return False
-    if letter == "i":
-        return nxt == "ii"
-    return prev in ROMAN and ROMAN.index(prev) + 1 == ROMAN.index(letter)
+def _roman_list_starts(next_markers: list[str | None]) -> bool:
+    """(h) 다음의 (i)가 실은 로마 숫자 하위 항목인지 — 표지가 있는 다음 문단이 (ii)면 로마 숫자 목록의 시작이다
+    (§62.35-20(h)(2)(i)). 사이에 표지 없는 문단이 끼어도 건너뛰고 본다."""
+    return next((m for m in next_markers if m is not None), None) == "ii"
 
 
 def _table_chunks(table: ET.Element, sec: str, n: int) -> list[Chunk]:
@@ -96,20 +91,20 @@ def parse_section(div: ET.Element, split_over: int = SPLIT_OVER) -> list[Chunk]:
     # (마커, 글) 덩어리로 모은다. 마커가 None이면 첫 문단 앞의 머리글이다.
     paras: list[tuple[str | None, list[str]]] = [(None, [])]
     cur: str | None = None
-    # 문단마다 앞머리 표지((a)·(2)·(ii) 등). 맨 위 문단인지 가릴 때 앞뒤 문단의 표지를 본다.
-    texts = [_text(el) for el in div if el.tag == "P"]
+    # 문단마다 앞머리 표지((a)·(2)·(ii) 등). (i)가 맨 위 문단인지 가릴 때 뒤 문단의 표지를 본다.
+    ps = [el for el in div if el.tag == "P"]
+    order = {el: n for n, el in enumerate(ps)}
+    texts = [_text(el) for el in ps]
     markers = [m.group(1) if (m := ANY_MARKER.match(t)) else None for t in texts]
-    i = -1
     for el in div:
         if el.tag == "P":
-            i += 1
-            t = texts[i]
+            n = order[el]
+            t = texts[n]
             m = TOP_MARKER.match(t)
-            # (i)는 문단 (i)일 수도, 하위 문단 (i)(로마 숫자)일 수도 있다 — 다음 글자이고, 앞뒤 표지로 보아 로마 숫자
-            # 목록이 아닐 때만 맨 위 문단((h)(2) 아래의 (i) Loss of burner flame occurs; 다음엔 (ii)가 온다).
-            prev = markers[i - 1] if i > 0 else None
-            nxt = markers[i + 1] if i + 1 < len(markers) else None
-            if m and m.group(1) == _next_letter(cur) and not _roman_subitem(m.group(1), prev, nxt):
+            # (i)는 문단 (i)일 수도, 하위 문단 (i)(로마 숫자)일 수도 있다 — 다음 글자이고, 로마 숫자 목록의 시작이
+            # 아닐 때만 맨 위 문단((h)(2) 아래의 (i) Loss of burner flame occurs; 다음엔 (ii)가 온다).
+            roman = m is not None and m.group(1) == "i" and _roman_list_starts(markers[n + 1 :])
+            if m and m.group(1) == _next_letter(cur) and not roman:
                 cur = m.group(1)
                 paras.append((cur, []))
             paras[-1][1].append(t)

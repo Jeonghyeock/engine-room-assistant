@@ -55,12 +55,11 @@ def test_roman_i_after_h_is_a_subitem_when_ii_follows():
     assert by_loc["§99.1-2(j)"] == "(j) Top-level j."
 
 
-def test_roman_continuation_is_not_a_top_level_letter():
-    """(iv) 다음의 (v), (ix) 다음의 (x)는 로마 숫자 목록의 이어짐이다. 앞 표지가 로마 숫자가 아니면 맨 위 문단."""
-    assert cfr._roman_subitem("v", "iv", None)
-    assert cfr._roman_subitem("x", "ix", None)
-    assert not cfr._roman_subitem("v", "3", None)
-    assert not cfr._roman_subitem("i", "2", "j")
+def test_roman_list_start_skips_unmarked_paragraphs():
+    """(i)와 (ii) 사이에 표지 없는 문단이 끼어도 로마 숫자 목록으로 본다. 다음 표지가 (j)면 맨 위 (i)다."""
+    assert cfr._roman_list_starts([None, "ii"])
+    assert not cfr._roman_list_starts([None, "j"])
+    assert not cfr._roman_list_starts([])
 
 
 def test_revision_history_is_dropped(chunks):
