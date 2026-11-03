@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { splitInline } from "./inline";
+import { citeView, splitInline } from "./inline";
 
 const t = (value: string, bold = false) => ({ kind: "text", value, bold });
 const c = (n: number, bold = false) => ({ kind: "cite", value: `[${n}]`, n, bold });
@@ -33,5 +33,37 @@ describe("splitInline", () => {
 
   it("아직 닫히지 않은 **는 글자로 둔다", () => {
     expect(splitInline("답은 **안 된")).toEqual([t("답은 **안 된")]);
+  });
+});
+
+describe("인용 번호 — 백엔드(agent._NUM_GROUP)와 같은 규칙(#3 리뷰)", () => {
+  const n = (value: string, num: number) => ({ kind: "cite", value, n: num, bold: false });
+
+  it("1~99만 인용이다 — [0]·[100]·[2026]은 글자", () => {
+    expect(splitInline("[0] 기준 [100]개, [2026]년 [99]")).toEqual([t("[0] 기준 [100]개, [2026]년 "), c(99)]);
+  });
+
+  it("묶음·범위·전각 괄호도 인용이다 — 번호마다 누를 수 있다", () => {
+    expect(splitInline("근거 [1, 2]")).toEqual([t("근거 ["), n("1", 1), t(", "), n("2", 2), t("]")]);
+    expect(splitInline("[1-3]")).toEqual([t("["), n("1", 1), t("-"), n("3", 3), t("]")]);
+    expect(splitInline("【4】")).toEqual([n("【4】", 4)]);
+  });
+
+  it("백엔드가 펼치지 않는 범위(a > b, 10 넘게 벌어짐)는 글자", () => {
+    expect(splitInline("[3-1] [1-30]")).toEqual([t("[3-1] [1-30]")]);
+  });
+});
+
+describe("citeView", () => {
+  const cit = (num: number, verified: boolean) => ({ n: num, chunk_id: "x", source: "manual", locator: `매뉴얼 4.${num}`, title: "t", snippet: "s", verified });
+
+  it("확인된 인용과 확인되지 않은 인용, 아직 정보가 오지 않은 인용을 구별한다", () => {
+    expect(citeView(1, [cit(1, true)], false)).toEqual({ cls: "cite verified", title: "매뉴얼 4.1" });
+    expect(citeView(1, [cit(1, false)], true)).toEqual({ cls: "cite unverified", title: "매뉴얼 4.1" });
+    expect(citeView(2, [cit(1, true)], false)).toEqual({ cls: "cite", title: "근거 정보를 기다리는 중" });
+  });
+
+  it("끝난 답에서 서버가 인용으로 보지 않은 번호는 글자다", () => {
+    expect(citeView(2, [cit(1, true)], true)).toBeNull();
   });
 });

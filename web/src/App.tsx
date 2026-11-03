@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError, getAlarms, getScenarios, startScenario, streamChat, type Alarm, type Citation, type Scenario } from "./api";
-import { splitInline } from "./inline";
+import { citeView, splitInline } from "./inline";
 import { applyEvent, newTurn, rolledBack, split, type Step, type Turn } from "./turn";
 
 const ANALYZE_ALL = "지금 울리는 알람을 분석하고 조치를 권고해 줘";
@@ -14,32 +14,34 @@ function stepLabel(s: Step): string {
 }
 
 /** 답의 [n]을 누르면 근거 패널에서 그 조각을 연다. 되돌린 차례의 [n]은 버튼으로 만들지 않는다 —
- *  서버가 되돌린 번호는 다음 질문에서 다른 조각에 다시 붙을 수 있다. */
+ *  서버가 되돌린 번호는 다음 질문에서 다른 조각에 다시 붙을 수 있다. 끝난 답(settled)에서 서버가 인용으로 보지
+ *  않은 번호도 글자로 둔다. */
 function AnswerText({
   text,
   citations,
   live,
+  settled = false,
   onCite,
   className = "answer",
 }: {
   text: string;
   citations: Citation[];
   live: boolean;
+  settled?: boolean;
   onCite: (n: number) => void;
   className?: string;
 }) {
   return (
     <p className={className}>
       {splitInline(text).map((p, i) => {
+        const view = p.kind === "cite" && live ? citeView(p.n, citations, settled) : null;
         let node;
-        if (p.kind === "text" || !live) {
+        if (p.kind === "text" || view === null) {
           node = p.value;
         } else {
-          const c = citations.find((c) => c.n === p.n);
-          const cls = c === undefined ? "cite" : c.verified ? "cite verified" : "cite unverified";
           const n = p.n;
           node = (
-            <button className={cls} onClick={() => onCite(n)} title={c ? c.locator : "근거 정보를 기다리는 중"}>
+            <button className={view.cls} onClick={() => onCite(n)} title={view.title}>
               {p.value}
             </button>
           );
@@ -76,7 +78,7 @@ function TurnView({ turn, onCite }: { turn: Turn; onCite: (n: number) => void })
           ))}
         </details>
       )}
-      {answer && <AnswerText text={answer} citations={turn.citations} live={!back} onCite={onCite} />}
+      {answer && <AnswerText text={answer} citations={turn.citations} live={!back} settled={turn.status === "done"} onCite={onCite} />}
       {unverified.length > 0 && (
         <div className="warn">⚠ 이번 대화에서 검색된 적 없는 근거: {unverified.map((c) => c.locator).join(", ")}</div>
       )}
